@@ -16,6 +16,17 @@ export enum OSType {
   GARANTIA = 'Garantia/Reclamação'
 }
 
+export type UserRole = 'ADMIN' | 'USER';
+
+export interface User {
+  id: string;
+  username: string;
+  name: string;
+  password?: string;
+  role: UserRole;
+  createdAt: string;
+}
+
 export interface Client {
   id: string;
   name: string;
@@ -45,7 +56,7 @@ export interface Product {
   salePrice: number;
   quantity: number;
   minQuantity: number;
-  lastSaleAt?: string; // Data da última venda para cálculo de giro
+  lastSaleAt?: string;
   createdAt: string;
   active: boolean;
 }

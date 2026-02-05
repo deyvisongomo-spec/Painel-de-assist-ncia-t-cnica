@@ -60,7 +60,7 @@ const ServiceOrdersList: React.FC<ServiceOrdersListProps> = ({ onNewOS }) => {
                 <th className="px-6 py-4">Tipo</th>
                 <th className="px-6 py-4">Cliente / Aparelho</th>
                 <th className="px-6 py-4">Problema</th>
-                <th className="px-6 py-4 text-center">Técnico</th>
+                <th className="px-6 py-4 text-center">Responsável</th>
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4">Abertura</th>
                 <th className="px-6 py-4 text-center">Ações</th>
@@ -85,7 +85,7 @@ const ServiceOrdersList: React.FC<ServiceOrdersListProps> = ({ onNewOS }) => {
                     <div className="text-[10px] text-slate-500 uppercase">{os.device}</div>
                   </td>
                   <td className="px-6 py-4 text-sm text-slate-600">{os.problem}</td>
-                  <td className="px-6 py-4 text-sm text-slate-600 text-center">{os.tech}</td>
+                  <td className="px-6 py-4 text-sm text-slate-600 text-center font-semibold">{os.tech}</td>
                   <td className="px-6 py-4">
                     <span className={`px-3 py-1 rounded-full text-[10px] font-bold ${STATUS_COLORS[os.status]}`}>
                       {os.status}

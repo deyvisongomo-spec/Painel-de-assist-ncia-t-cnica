@@ -1,9 +1,8 @@
 
-import { Client, ServiceOrder, Product, CashTransaction, OSStatus } from '../types';
+import { Client, ServiceOrder, Product, CashTransaction, OSStatus, User } from '../types';
 
-// Simulação de Banco de Dados Google Firestore
-// Para usar o real, você instalaria 'firebase/app' e 'firebase/firestore'
 const STORAGE_KEY = 'asim_db_v1';
+const USERS_KEY = 'asim_users_v1';
 
 const getDb = () => {
   const data = localStorage.getItem(STORAGE_KEY);
@@ -14,7 +13,72 @@ const saveDb = (db: any) => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
 };
 
+const getUsers = (): User[] => {
+  const data = localStorage.getItem(USERS_KEY);
+  if (!data) {
+    const admin: User = { 
+      id: 'admin-1', 
+      username: 'admin', 
+      password: '123', 
+      name: 'Administrador Asim', 
+      role: 'ADMIN', 
+      createdAt: new Date().toISOString() 
+    };
+    localStorage.setItem(USERS_KEY, JSON.stringify([admin]));
+    return [admin];
+  }
+  return JSON.parse(data);
+};
+
 export const api = {
+  // --- USUÁRIOS E AUTH ---
+  login: async (username: string, pass: string): Promise<User | null> => {
+    const users = getUsers();
+    const user = users.find(u => u.username === username && u.password === pass);
+    if (user) {
+      const { password, ...userWithoutPass } = user;
+      return userWithoutPass as User;
+    }
+    return null;
+  },
+
+  getUsersList: async (): Promise<User[]> => {
+    return getUsers();
+  },
+
+  addUser: async (userData: Omit<User, 'id' | 'createdAt'>): Promise<{success: boolean, message: string}> => {
+    const users = getUsers();
+    if (users.length >= 3) {
+      return { success: false, message: 'Limite de 2 usuários adicionais atingido.' };
+    }
+    const newUser = {
+      ...userData,
+      id: Math.random().toString(36).substr(2, 9),
+      createdAt: new Date().toISOString()
+    };
+    users.push(newUser);
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    return { success: true, message: 'Usuário cadastrado com sucesso.' };
+  },
+
+  updateUser: async (id: string, updates: Partial<User>): Promise<User> => {
+    const users = getUsers();
+    const index = users.findIndex(u => u.id === id);
+    if (index === -1) throw new Error("Usuário não encontrado");
+    
+    users[index] = { ...users[index], ...updates };
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    
+    const { password, ...userWithoutPass } = users[index];
+    return userWithoutPass as User;
+  },
+
+  removeUser: async (id: string): Promise<void> => {
+    const users = getUsers();
+    const filtered = users.filter(u => u.id !== id || u.id === 'admin-1');
+    localStorage.setItem(USERS_KEY, JSON.stringify(filtered));
+  },
+
   // --- CLIENTES ---
   getClients: async (): Promise<Client[]> => {
     return getDb().clients;
@@ -52,7 +116,7 @@ export const api = {
     return newOS;
   },
 
-  // --- ESTOQUE E GIRO (BACK-END LOGIC) ---
+  // --- ESTOQUE E GIRO ---
   getInventory: async (): Promise<Product[]> => {
     return getDb().products;
   },
@@ -75,7 +139,7 @@ export const api = {
       ...product,
       id: Math.random().toString(36).substr(2, 9),
       createdAt: new Date().toISOString(),
-      lastSaleAt: new Date().toISOString() // Inicializa para não marcar como morto imediatamente
+      lastSaleAt: new Date().toISOString()
     };
     db.products.push(newProduct);
     saveDb(db);
