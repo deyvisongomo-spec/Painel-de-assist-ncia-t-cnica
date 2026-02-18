@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { MENU_ITEMS } from '../constants';
-import { Menu, X, Bell, User as UserIcon, LogOut, Users as UsersIcon } from 'lucide-react';
+import { Menu, X, Bell, User as UserIcon, LogOut, Users as UsersIcon, History, Wallet } from 'lucide-react';
 import { User } from '../types';
 
 interface LayoutProps {
@@ -27,7 +27,6 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, user
     }
   };
 
-  // Filtrar menu por papel
   const visibleMenuItems = MENU_ITEMS.filter(item => {
     if (user.role === 'USER') {
       return !['caixa', 'fornecedores', 'configuracoes'].includes(item.id);
@@ -51,7 +50,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, user
           {config.logo ? <img src={config.logo} alt="Logo" className="max-h-16 w-full object-contain" /> : <h1 className="text-2xl font-bold text-blue-600">{config.name}</h1>}
         </div>
 
-        <nav className="flex-1 px-4 py-4 space-y-1">
+        <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
           {visibleMenuItems.map((item) => (
             <button key={item.id} onClick={() => { setActiveTab(item.id); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${activeTab === item.id ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'}`}>
               {item.icon} {item.label}
@@ -59,13 +58,24 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, user
           ))}
           
           {user.role === 'ADMIN' && (
-            <button onClick={() => { setActiveTab('usuarios'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${activeTab === 'usuarios' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'}`}>
-              <UsersIcon size={20} /> Gestão de Equipe
-            </button>
+            <>
+              <div className="my-4 border-t border-slate-100 pt-4 px-4">
+                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Administração</p>
+              </div>
+              <button onClick={() => { setActiveTab('comissoes'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${activeTab === 'comissoes' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'}`}>
+                <Wallet size={20} /> Comissões
+              </button>
+              <button onClick={() => { setActiveTab('usuarios'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${activeTab === 'usuarios' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'}`}>
+                <UsersIcon size={20} /> Equipe
+              </button>
+              <button onClick={() => { setActiveTab('auditoria'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${activeTab === 'auditoria' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'}`}>
+                <History size={20} /> Auditoria / Logs
+              </button>
+            </>
           )}
         </nav>
 
-        <div className="p-4 border-t mt-auto space-y-2">
+        <div className="p-4 border-t mt-auto space-y-2 bg-white">
           <div className="flex items-center gap-3 p-2 bg-slate-50 rounded-2xl border border-slate-100">
             <div className={`w-10 h-10 rounded-full flex items-center justify-center ${user.role === 'ADMIN' ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-500'}`}>
               <UserIcon size={18} />
@@ -84,7 +94,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, user
       <main className="flex-1 overflow-y-auto h-screen bg-slate-50/50">
         <div className="hidden md:flex bg-white border-b h-16 items-center justify-between px-8 sticky top-0 z-10">
           <h2 className="text-lg font-black text-slate-800 uppercase tracking-tight">
-            {activeTab === 'usuarios' ? 'Gestão de Equipe' : MENU_ITEMS.find(item => item.id === activeTab)?.label}
+            {activeTab === 'comissoes' ? 'Comissões' : activeTab === 'usuarios' ? 'Equipe' : activeTab === 'auditoria' ? 'Auditoria' : MENU_ITEMS.find(item => item.id === activeTab)?.label}
           </h2>
           <div className="flex items-center gap-4">
             <button className="p-2 text-slate-500 hover:bg-slate-50 rounded-full relative"><Bell size={20} /></button>

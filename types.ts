@@ -18,13 +18,33 @@ export enum OSType {
 
 export type UserRole = 'ADMIN' | 'USER';
 
+export interface ActivityLog {
+  id: string;
+  userId: string;
+  userName: string;
+  action: string;
+  details: string;
+  timestamp: string;
+  severity: 'info' | 'warning' | 'danger';
+}
+
 export interface User {
   id: string;
   username: string;
   name: string;
   password?: string;
   role: UserRole;
+  commissionRate: number; // Porcentagem de comissão (ex: 10 para 10%)
   createdAt: string;
+}
+
+export interface CommissionReport {
+  userId: string;
+  userName: string;
+  totalServices: number;
+  totalValue: number;
+  commissionValue: number;
+  osCount: number;
 }
 
 export interface Client {
@@ -67,6 +87,8 @@ export interface ServiceOrder {
   type: OSType;
   clientId: string;
   clientName: string;
+  responsibleId: string; // ID do usuário responsável
+  responsibleName: string;
   device: {
     brand: string;
     model: string;

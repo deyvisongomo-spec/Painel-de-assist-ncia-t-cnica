@@ -13,6 +13,8 @@ import SettingsView from './views/SettingsView';
 import ShoppingListView from './views/ShoppingListView';
 import LoginView from './views/LoginView';
 import UserManagementView from './views/UserManagementView';
+import AuditLogsView from './views/AuditLogsView';
+import CommissionsView from './views/CommissionsView';
 import { User } from './types';
 import { api } from './services/api';
 
@@ -59,6 +61,7 @@ const App: React.FC = () => {
   };
 
   const handleSaveOS = (data: any) => {
+    api.createOS(data);
     alert("Ordem de Serviço salva com sucesso!");
     setIsCreatingOS(false);
   };
@@ -68,12 +71,10 @@ const App: React.FC = () => {
   }
 
   const renderContent = () => {
-    if (currentUser.role === 'USER') {
-      const restrictedTabs = ['caixa', 'fornecedores', 'configuracoes', 'usuarios'];
-      if (restrictedTabs.includes(activeTab)) {
-        setActiveTab('dashboard');
-        return <Dashboard onNewOS={handleNewOS} onViewAllOS={() => setActiveTab('os')} />;
-      }
+    const restrictedTabs = ['caixa', 'fornecedores', 'configuracoes', 'usuarios', 'auditoria', 'comissoes'];
+    if (currentUser.role === 'USER' && restrictedTabs.includes(activeTab)) {
+      setActiveTab('dashboard');
+      return <Dashboard onNewOS={handleNewOS} onViewAllOS={() => setActiveTab('os')} />;
     }
 
     switch (activeTab) {
@@ -100,6 +101,10 @@ const App: React.FC = () => {
         return <SettingsView />;
       case 'usuarios':
         return <UserManagementView currentUser={currentUser} onUpdateSelf={handleUpdateSelf} />;
+      case 'auditoria':
+        return <AuditLogsView />;
+      case 'comissoes':
+        return <CommissionsView />;
       default:
         return <Dashboard onNewOS={handleNewOS} onViewAllOS={() => setActiveTab('os')} />;
     }
