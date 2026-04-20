@@ -121,3 +121,31 @@ export interface CashTransaction {
   paymentMethod: string;
   referenceId?: string;
 }
+
+export interface Supplier {
+  id: string;
+  name: string;
+  contact: string;
+  phone: string;
+  address: string;
+  items: string;
+}
+
+export interface CatalogItem {
+  id: string;
+  brand: string;
+  model: string;
+  char: string;
+  master: number;
+  import: number;
+  premium: number;
+  pro: number;
+}
+
+export interface Reminder {
+  id: string;
+  text: string;
+  category: 'Acessórios' | 'Peças' | 'Insumos' | 'Outros';
+  checked: boolean;
+  createdAt: string;
+}

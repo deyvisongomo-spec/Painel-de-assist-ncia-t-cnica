@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
@@ -7,59 +6,78 @@ import {
   Circle, 
   ShoppingCart, 
   MessageSquare, 
-  Tag, 
   AlertTriangle,
   Lightbulb,
   Smartphone,
   Headphones,
-  ShoppingBag
+  ShoppingBag,
+  Loader2
 } from 'lucide-react';
-
-interface Reminder {
-  id: string;
-  text: string;
-  category: 'Acessórios' | 'Peças' | 'Insumos' | 'Outros';
-  checked: boolean;
-}
+import { api } from '../services/api';
+import { Reminder, Product } from '../types';
 
 const ShoppingListView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'reminders' | 'stock'>('reminders');
-  const [reminders, setReminders] = useState<Reminder[]>([
-    { id: '1', text: 'Capinhas iPhone 15 (Transparente e Silicone)', category: 'Acessórios', checked: false },
-    { id: '2', text: 'Películas 3D para linha Samsung S23', category: 'Acessórios', checked: false },
-    { id: '3', text: 'Caixas de Som Bluetooth (Tipo JBL Go)', category: 'Acessórios', checked: true },
-    { id: '4', text: 'Cabos USB-C Turbo (Qualidade Premium)', category: 'Acessórios', checked: false },
-  ]);
+  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [lowStockItems, setLowStockItems] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [newReminder, setNewReminder] = useState('');
   const [newCategory, setNewCategory] = useState<Reminder['category']>('Acessórios');
 
-  // Mock de estoque baixo sincronizado
-  const lowStockItems = [
-    { name: 'Película Cerâmica iPhone 11', stock: 2, min: 10, category: 'Acessórios' },
-    { name: 'Tela iPhone 12 Incell', stock: 1, min: 3, category: 'Peças' },
-    { name: 'Bateria iPhone XR Gold', stock: 0, min: 2, category: 'Peças' },
-    { name: 'Carregador 20W DJE Tech', stock: 3, min: 15, category: 'Acessórios' },
-  ];
+  useEffect(() => {
+    loadData();
+  }, []);
 
-  const addReminder = (e: React.FormEvent) => {
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      const [remindersData, inventoryData] = await Promise.all([
+        api.getReminders(),
+        api.getInventory()
+      ]);
+      setReminders(remindersData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+      setLowStockItems(inventoryData.filter(p => p.quantity <= p.minQuantity));
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const addReminder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newReminder.trim()) return;
-    const newItem: Reminder = {
-      id: Math.random().toString(36).substr(2, 9),
-      text: newReminder,
-      category: newCategory,
-      checked: false
-    };
-    setReminders([newItem, ...reminders]);
-    setNewReminder('');
+    
+    try {
+      await api.saveReminder({
+        text: newReminder,
+        category: newCategory,
+        checked: false,
+        createdAt: new Date().toISOString()
+      });
+      setNewReminder('');
+      loadData();
+    } catch (error) {
+      console.error('Erro ao salvar lembrete:', error);
+    }
   };
 
-  const toggleReminder = (id: string) => {
-    setReminders(reminders.map(r => r.id === id ? { ...r, checked: !r.checked } : r));
+  const toggleReminder = async (id: string, currentChecked: boolean) => {
+    try {
+      await api.updateReminder(id, { checked: !currentChecked });
+      loadData();
+    } catch (error) {
+      console.error('Erro ao atualizar lembrete:', error);
+    }
   };
 
-  const deleteReminder = (id: string) => {
-    setReminders(reminders.filter(r => r.id !== id));
+  const handleDeleteReminder = async (id: string) => {
+    try {
+      await api.deleteReminder(id);
+      loadData();
+    } catch (error) {
+      console.error('Erro ao remover lembrete:', error);
+    }
   };
 
   const shareList = () => {
@@ -69,7 +87,7 @@ const ShoppingListView: React.FC = () => {
       .join('\n');
     
     const stockText = lowStockItems
-      .map(i => `• [ESTOQUE BAIXO] ${i.name} (Restam ${i.stock})`)
+      .map(i => `• [ESTOQUE BAIXO] ${i.name} (Restam ${i.quantity})`)
       .join('\n');
 
     const fullMessage = `*LISTA DE COMPRAS - DJE CELULARES*\n\n*LEMBRETES:*\n${listText || 'Nenhum'}\n\n*REPOSIÇÃO URGENTE:*\n${stockText}`;
@@ -108,9 +126,13 @@ const ShoppingListView: React.FC = () => {
         </button>
       </div>
 
-      {activeTab === 'reminders' ? (
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center py-40 gap-4">
+          <Loader2 className="animate-spin text-blue-600" size={48} />
+          <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Sincronizando Lista...</p>
+        </div>
+      ) : activeTab === 'reminders' ? (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Adicionar Novo */}
           <div className="lg:col-span-4 sticky top-24">
             <form onSubmit={addReminder} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6">
               <h3 className="font-black text-slate-800 text-xs uppercase tracking-widest border-b pb-4">Anotar Necessidade</h3>
@@ -148,7 +170,6 @@ const ShoppingListView: React.FC = () => {
             </form>
           </div>
 
-          {/* Lista de Lembretes */}
           <div className="lg:col-span-8 space-y-4">
             {reminders.length === 0 && (
               <div className="bg-white p-20 rounded-[3rem] border border-dashed border-slate-200 flex flex-col items-center text-center">
@@ -166,7 +187,7 @@ const ShoppingListView: React.FC = () => {
                 className={`bg-white p-6 rounded-3xl border transition-all flex items-center justify-between group ${r.checked ? 'border-slate-50 opacity-60' : 'border-slate-100 shadow-sm'}`}
               >
                 <div className="flex items-center gap-6">
-                  <button onClick={() => toggleReminder(r.id)} className={`transition-colors ${r.checked ? 'text-emerald-500' : 'text-slate-200 hover:text-blue-500'}`}>
+                  <button onClick={() => toggleReminder(r.id, r.checked)} className={`transition-colors ${r.checked ? 'text-emerald-500' : 'text-slate-200 hover:text-blue-500'}`}>
                     {r.checked ? <CheckCircle2 size={28} /> : <Circle size={28} />}
                   </button>
                   <div>
@@ -180,7 +201,7 @@ const ShoppingListView: React.FC = () => {
                   </div>
                 </div>
                 <button 
-                  onClick={() => deleteReminder(r.id)}
+                  onClick={() => handleDeleteReminder(r.id)}
                   className="p-3 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-2xl transition-all opacity-0 group-hover:opacity-100"
                 >
                   <Trash2 size={20} />
@@ -190,7 +211,6 @@ const ShoppingListView: React.FC = () => {
           </div>
         </div>
       ) : (
-        /* Aba de Estoque Baixo */
         <div className="bg-white rounded-[3rem] border border-slate-100 shadow-sm overflow-hidden">
           <div className="p-8 border-b border-slate-50 flex items-center justify-between bg-amber-50/30">
             <div className="flex items-center gap-4">
@@ -204,51 +224,57 @@ const ShoppingListView: React.FC = () => {
             </div>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b bg-slate-50/50">
-                  <th className="px-8 py-5">Item com Estoque Baixo</th>
-                  <th className="px-4 py-5 text-center">Atual</th>
-                  <th className="px-4 py-5 text-center">Mínimo Ideal</th>
-                  <th className="px-4 py-5">Status Crítico</th>
-                  <th className="px-8 py-5 text-right">Ação</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {lowStockItems.map((item, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-8 py-6">
-                      <div className="flex items-center gap-4">
-                        <div className={`p-2 rounded-xl ${item.category === 'Acessórios' ? 'bg-indigo-50 text-indigo-500' : 'bg-rose-50 text-rose-500'}`}>
-                          {item.category === 'Acessórios' ? <Headphones size={20} /> : <Smartphone size={20} />}
-                        </div>
-                        <div>
-                          <p className="text-sm font-black text-slate-800">{item.name}</p>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{item.category}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-6 text-center">
-                      <span className={`font-black text-lg ${item.stock === 0 ? 'text-rose-600' : 'text-amber-600'}`}>{item.stock}</span>
-                    </td>
-                    <td className="px-4 py-6 text-center">
-                      <span className="font-black text-slate-400">{item.min}</span>
-                    </td>
-                    <td className="px-4 py-6">
-                      <div className="w-32 h-2 bg-slate-100 rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full rounded-full ${item.stock === 0 ? 'bg-red-500' : 'bg-amber-500'}`} 
-                          style={{ width: `${Math.min((item.stock / item.min) * 100, 100)}%` }}
-                        ></div>
-                      </div>
-                    </td>
-                    <td className="px-8 py-6 text-right">
-                      <button className="text-[10px] font-black uppercase text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-xl transition-all">Ver Fornecedores</button>
-                    </td>
+            {lowStockItems.length === 0 ? (
+              <div className="py-20 text-center">
+                <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Nenhum item com estoque baixo</p>
+              </div>
+            ) : (
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b bg-slate-50/50">
+                    <th className="px-8 py-5">Item com Estoque Baixo</th>
+                    <th className="px-4 py-5 text-center">Atual</th>
+                    <th className="px-4 py-5 text-center">Mínimo Ideal</th>
+                    <th className="px-4 py-5">Status Crítico</th>
+                    <th className="px-8 py-5 text-right">Ação</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {lowStockItems.map((item) => (
+                    <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-8 py-6">
+                        <div className="flex items-center gap-4">
+                          <div className={`p-2 rounded-xl ${item.category === 'Acessórios' ? 'bg-indigo-50 text-indigo-500' : 'bg-rose-50 text-rose-500'}`}>
+                            {item.category === 'Acessórios' ? <Headphones size={20} /> : <Smartphone size={20} />}
+                          </div>
+                          <div>
+                            <p className="text-sm font-black text-slate-800">{item.name}</p>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{item.category}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-6 text-center">
+                        <span className={`font-black text-lg ${item.quantity === 0 ? 'text-rose-600' : 'text-amber-600'}`}>{item.quantity}</span>
+                      </td>
+                      <td className="px-4 py-6 text-center">
+                        <span className="font-black text-slate-400">{item.minQuantity}</span>
+                      </td>
+                      <td className="px-4 py-6">
+                        <div className="w-32 h-2 bg-slate-100 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full rounded-full ${item.quantity === 0 ? 'bg-red-500' : 'bg-amber-500'}`} 
+                            style={{ width: `${Math.min((item.quantity / item.minQuantity) * 100, 100)}%` }}
+                          ></div>
+                        </div>
+                      </td>
+                      <td className="px-8 py-6 text-right">
+                        <button className="text-[10px] font-black uppercase text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-xl transition-all">Ver Fornecedores</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       )}

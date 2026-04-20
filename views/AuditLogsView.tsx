@@ -41,7 +41,7 @@ const AuditLogsView: React.FC = () => {
           <h2 className="text-3xl font-black text-slate-800 tracking-tight flex items-center gap-3">
             <History size={32} className="text-slate-400" /> Linha do Tempo da Loja
           </h2>
-          <p className="text-slate-500 font-medium">Auditoria completa de todas as ações realizadas no painel.</p>
+          <p className="text-slate-500 font-medium">Auditoria completa de todas as ações realizadas no PainelCell.</p>
         </div>
         <div className="relative w-full md:w-80">
           <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />

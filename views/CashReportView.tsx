@@ -86,7 +86,7 @@ const CashReportView: React.FC<CashReportViewProps> = ({ transactions, onBack })
       <div id="thermal-report" className="hidden print:block">
         <div className="r-center">
           <p className="r-bold" style={{fontSize: '12pt'}}>FECHAMENTO DE CAIXA</p>
-          <p>PAINEL DA A - GESTÃO</p>
+          <p>PAINELCELL</p>
           <p>PERÍODO: {new Date(dateRange.start).toLocaleDateString()} ATÉ {new Date(dateRange.end).toLocaleDateString()}</p>
         </div>
         <div className="r-sep"></div>

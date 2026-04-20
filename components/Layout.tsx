@@ -9,21 +9,29 @@ interface LayoutProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   user: User;
+  onLogout: () => void;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, user }) => {
+const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, user, onLogout }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [config, setConfig] = useState({ logo: '', name: 'Painel da Asim' });
+  const [config, setConfig] = useState({ logo: '', name: 'Painelcell' });
 
   useEffect(() => {
     const saved = localStorage.getItem('app_config');
-    if (saved) setConfig(JSON.parse(saved));
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Força a atualização do nome no cache local se for o nome antigo
+      if (parsed.name === 'PAINELTEC' || parsed.name === 'PainelTec' || parsed.name === 'Painel da Asim') {
+        parsed.name = 'Painelcell';
+        localStorage.setItem('app_config', JSON.stringify(parsed));
+      }
+      setConfig(parsed);
+    }
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (confirm("Deseja sair do sistema?")) {
-      localStorage.removeItem('asim_session');
-      window.location.reload();
+      await onLogout();
     }
   };
 
@@ -37,7 +45,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, user
   return (
     <div className="min-h-screen flex flex-col md:flex-row overflow-hidden">
       <header className="md:hidden bg-white border-b px-4 py-3 flex items-center justify-between sticky top-0 z-50">
-        <h1 className="text-xl font-bold text-blue-600">{config.name}</h1>
+        <h1 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 tracking-tighter">{config.name}</h1>
         <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 hover:bg-slate-100 rounded-md">
           {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
@@ -47,7 +55,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, user
 
       <aside className={`fixed md:relative top-0 bottom-0 left-0 w-64 bg-white border-r z-50 transform transition-transform duration-200 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} flex flex-col`}>
         <div className="p-8 hidden md:block border-b mb-4">
-          {config.logo ? <img src={config.logo} alt="Logo" className="max-h-16 w-full object-contain" /> : <h1 className="text-2xl font-bold text-blue-600">{config.name}</h1>}
+          {config.logo ? <img src={config.logo} alt="Logo" className="max-h-16 w-full object-contain" /> : <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 tracking-tighter">{config.name}</h1>}
         </div>
 
         <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
@@ -86,7 +94,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, user
             </div>
           </div>
           <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-2 text-rose-500 hover:bg-rose-50 rounded-xl text-xs font-black uppercase tracking-widest transition-all">
-            <LogOut size={16} /> Sair do Painel
+            <LogOut size={16} /> Sair do Sistema
           </button>
         </div>
       </aside>

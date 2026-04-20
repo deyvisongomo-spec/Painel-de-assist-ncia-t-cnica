@@ -25,7 +25,7 @@ const CommissionsView: React.FC = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-3xl font-black text-slate-800 tracking-tight flex items-center gap-3">
-            <Wallet size={32} className="text-emerald-500" /> Painel de Comissões
+            <Wallet size={32} className="text-emerald-500" /> PainelCell Comissões
           </h2>
           <p className="text-slate-500 font-medium">Cálculo automático baseado em Mão de Obra de OS entregues.</p>
         </div>
@@ -75,9 +75,9 @@ const CommissionsView: React.FC = () => {
                 <td className="px-8 py-6">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-500 font-black">
-                      {r.userName.charAt(0)}
+                      {r.userName?.charAt(0) || '?'}
                     </div>
-                    <span className="text-sm font-black text-slate-700">{r.userName}</span>
+                    <span className="text-sm font-black text-slate-700">{r.userName || 'Sem Nome'}</span>
                   </div>
                 </td>
                 <td className="px-6 py-6 text-center">

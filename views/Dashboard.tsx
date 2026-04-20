@@ -1,9 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
-import { TrendingUp, DollarSign, Plus, ArrowRight, Smartphone, AlertTriangle, Timer, PackageSearch } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { TrendingUp, DollarSign, Plus, ArrowRight, Smartphone, AlertTriangle, Timer, PackageSearch, Loader2 } from 'lucide-react';
 import { STATUS_COLORS } from '../constants';
 import { api } from '../services/api';
-import { Product } from '../types';
+import { Product, ServiceOrder, CashTransaction } from '../types';
 
 interface DashboardProps {
   onNewOS: () => void;
@@ -11,31 +11,69 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ onNewOS, onViewAllOS }) => {
+  const [isLoading, setIsLoading] = useState(true);
   const [deadStockCount, setDeadStockCount] = useState(0);
+  const [recentOS, setRecentOS] = useState<ServiceOrder[]>([]);
+  const [stats, setStats] = useState({
+    osToday: 0,
+    criticalStock: 0,
+    revenue: 0
+  });
 
   useEffect(() => {
-    api.getDeadStock().then(items => setDeadStockCount(items.length));
+    loadDashboardData();
   }, []);
 
-  const stats = [
-    { label: 'OS Hoje', value: '12', icon: <Plus className="text-blue-600" />, color: 'bg-blue-50' },
-    { label: 'Estoque Crítico', value: '8', icon: <AlertTriangle className="text-amber-600 animate-pulse" />, color: 'bg-amber-50' },
+  const loadDashboardData = async () => {
+    setIsLoading(true);
+    try {
+      const [os, products, transactions, deadItems] = await Promise.all([
+        api.getServiceOrders(),
+        api.getInventory(),
+        api.getTransactions(),
+        api.getDeadStock()
+      ]);
+
+      const today = new Date().toISOString().split('T')[0];
+      
+      const osToday = os.filter(o => o.openedAt && typeof o.openedAt === 'string' && o.openedAt.startsWith(today)).length;
+      const criticalStock = products.filter(p => p.quantity <= p.minQuantity).length;
+      const revenue = transactions
+        .filter(t => t.date === today && t.type === 'entrada')
+        .reduce((acc, t) => acc + (t.value || 0), 0);
+
+      setStats({ osToday, criticalStock, revenue });
+      setRecentOS(os.slice(0, 5));
+      setDeadStockCount(deadItems.length);
+    } catch (error) {
+      console.error('Erro ao carregar dados do dashboard:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const dashboardStats = [
+    { label: 'OS Hoje', value: stats.osToday.toString(), icon: <Plus className="text-blue-600" />, color: 'bg-blue-50' },
+    { label: 'Estoque Crítico', value: stats.criticalStock.toString(), icon: <AlertTriangle className={`text-amber-600 ${stats.criticalStock > 0 ? 'animate-pulse' : ''}`} />, color: 'bg-amber-50' },
     { label: 'Estoque Parado (+60d)', value: deadStockCount.toString(), icon: <Timer className="text-rose-600" />, color: 'bg-rose-50' },
-    { label: 'Faturamento', value: 'R$ 2.450', icon: <DollarSign className="text-emerald-600" />, color: 'bg-emerald-50' },
+    { label: 'Faturamento Hoje', value: `R$ ${stats.revenue.toFixed(2)}`, icon: <DollarSign className="text-emerald-600" />, color: 'bg-emerald-50' },
   ];
 
-  const recentOS = [
-    { id: '1', os: '8452', client: 'João Silva', device: 'iPhone 13', type: 'Reparo', status: 'Em serviço', date: '22/05' },
-    { id: '2', os: '8451', client: 'Maria Oliveira', device: 'Galaxy S21', type: 'Orçamento', status: 'Em análise', date: '22/05' },
-    { id: '3', os: '8450', client: 'Pedro Santos', device: 'Redmi Note 11', type: 'Garantia', status: 'Recebido', date: '21/05' },
-  ];
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-40 gap-4">
+        <Loader2 className="animate-spin text-blue-600" size={48} />
+        <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Sincronizando Sistema...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 md:space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight uppercase">Painel da Asim</h1>
-          <p className="text-slate-500 font-medium">Gestão inteligente de Assistência & Vitrine.</p>
+          <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight flex items-center gap-2">PainelCell</h1>
+          <p className="text-slate-500 font-bold text-xs uppercase tracking-widest mt-1">Gestão de Assistência & Acessórios</p>
         </div>
         <button 
           onClick={onNewOS}
@@ -47,7 +85,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNewOS, onViewAllOS }) => {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-        {stats.map((stat, i) => (
+        {dashboardStats.map((stat, i) => (
           <div key={i} className="bg-white p-4 md:p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
             {stat.label.includes('Parado') && deadStockCount > 0 && (
               <div className="absolute top-0 right-0 w-2 h-full bg-rose-500"></div>
@@ -87,38 +125,48 @@ const Dashboard: React.FC<DashboardProps> = ({ onNewOS, onViewAllOS }) => {
           </button>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="bg-slate-50/50 text-slate-400 text-[9px] uppercase tracking-widest font-black border-b">
-                <th className="px-6 py-4">OS / Cliente</th>
-                <th className="px-6 py-4 hidden md:table-cell">Aparelho</th>
-                <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4 text-right">Data</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {recentOS.map((os) => (
-                <tr key={os.id} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="font-black text-blue-600 text-xs">#{os.os}</div>
-                    <div className="text-xs font-bold text-slate-800">{os.client}</div>
-                  </td>
-                  <td className="px-6 py-4 hidden md:table-cell">
-                    <div className="flex items-center gap-2">
-                      <Smartphone size={14} className="text-slate-300" />
-                      <span className="text-xs font-bold text-slate-600">{os.device}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase border ${STATUS_COLORS[os.status]}`}>
-                      {os.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right text-[10px] font-black text-slate-400">{os.date}</td>
+          {recentOS.length === 0 ? (
+            <div className="py-20 text-center">
+              <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Nenhuma OS recente</p>
+            </div>
+          ) : (
+            <table className="w-full text-left">
+              <thead>
+                <tr className="bg-slate-50/50 text-slate-400 text-[9px] uppercase tracking-widest font-black border-b">
+                  <th className="px-6 py-4">OS / Cliente</th>
+                  <th className="px-6 py-4 hidden md:table-cell">Aparelho</th>
+                  <th className="px-6 py-4">Status</th>
+                  <th className="px-6 py-4 text-right">Data</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {recentOS.map((os) => (
+                  <tr key={os.id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="font-black text-blue-600 text-xs">#{os.id?.slice(-4).toUpperCase() || '????'}</div>
+                      <div className="text-xs font-bold text-slate-800">{os.clientName || 'N/A'}</div>
+                    </td>
+                    <td className="px-6 py-4 hidden md:table-cell">
+                      <div className="flex items-center gap-2">
+                        <Smartphone size={14} className="text-slate-300" />
+                        <span className="text-xs font-bold text-slate-600">
+                          {os.device?.brand || 'N/A'} {os.device?.model || ''}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase border ${STATUS_COLORS[os.status] || 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                        {os.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right text-[10px] font-black text-slate-400">
+                      {new Date(os.openedAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
     </div>

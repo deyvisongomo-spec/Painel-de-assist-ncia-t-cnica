@@ -1,7 +1,5 @@
 {
-  "name": "Painel da Asim - Gestão de Assistência",
-  "description": "Sistema profissional para gestão de assistência técnica, estoque de acessórios e fluxo financeiro.",
-  "requestFramePermissions": [
-    "camera"
-  ]
+  "name": "PainelCell - Gestão de Assistência",
+  "description": "Sistema de gestão inteligente de assistência técnica para celulares e venda de acessórios.",
+  "requestFramePermissions": []
 }

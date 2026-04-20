@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Component, ReactNode } from 'react';
 import Layout from './components/Layout';
 import Dashboard from './views/Dashboard';
 import ClientsView from './views/ClientsView';
@@ -15,15 +15,73 @@ import LoginView from './views/LoginView';
 import UserManagementView from './views/UserManagementView';
 import AuditLogsView from './views/AuditLogsView';
 import CommissionsView from './views/CommissionsView';
-import { User } from './types';
+import { User, ActivityLog, CommissionReport, Supplier, CatalogItem, Reminder, OSStatus, OSType } from './types';
 import { api } from './services/api';
+import { History } from 'lucide-react';
+
+// Error Boundary Component
+interface ErrorBoundaryProps {
+  children: ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: any;
+}
+
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: any): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error("ErrorBoundary caught an error", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+          <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl border border-rose-100 max-w-md w-full text-center">
+            <div className="w-20 h-20 bg-rose-50 text-rose-500 rounded-3xl flex items-center justify-center mx-auto mb-6">
+              <History size={40} />
+            </div>
+            <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight mb-2">Ops! Algo deu errado</h1>
+            <p className="text-slate-500 mb-6 font-medium">Ocorreu um erro inesperado ao carregar esta parte do sistema.</p>
+            <div className="bg-slate-50 p-4 rounded-2xl text-left mb-6 overflow-auto max-h-40">
+              <code className="text-[10px] text-rose-600 font-mono break-all">
+                {this.state.error?.message || "Erro desconhecido"}
+              </code>
+            </div>
+            <button 
+              onClick={() => window.location.reload()}
+              className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all"
+            >
+              Recarregar Sistema
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isCreatingOS, setIsCreatingOS] = useState(false);
+  const [selectedOS, setSelectedOS] = useState<any>(null);
+  const [isPrintingOS, setIsPrintingOS] = useState(false);
 
   useEffect(() => {
+    // Tenta carregar do LocalStorage primeiro para velocidade (opcional)
     const saved = localStorage.getItem('asim_session');
     if (saved) {
       try {
@@ -32,17 +90,33 @@ const App: React.FC = () => {
         localStorage.removeItem('asim_session');
       }
     }
+
+    // Verifica o estado real no Firebase
+    api.getCurrentUser().then(user => {
+      if (user) {
+        setCurrentUser(user);
+        localStorage.setItem('asim_session', JSON.stringify(user));
+      } else {
+        setCurrentUser(null);
+        localStorage.removeItem('asim_session');
+      }
+    });
   }, []);
 
   const handleLogin = async (user: string, pass: string): Promise<boolean> => {
-    const authenticated = await api.login(user, pass);
-    if (authenticated) {
-      localStorage.setItem('asim_session', JSON.stringify(authenticated));
-      setCurrentUser(authenticated);
-      setActiveTab('dashboard');
-      return true;
+    try {
+      const authenticated = await api.login(user, pass);
+      if (authenticated) {
+        localStorage.setItem('asim_session', JSON.stringify(authenticated));
+        setCurrentUser(authenticated);
+        setActiveTab('dashboard');
+        return true;
+      }
+      return false;
+    } catch (error: any) {
+      console.error('Erro no handleLogin:', error);
+      throw error; // Repassa para a View tratar
     }
-    return false;
   };
 
   const handleUpdateSelf = (updated: User) => {
@@ -50,20 +124,58 @@ const App: React.FC = () => {
     setCurrentUser(updated);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('asim_session');
+  const handleLogout = async () => {
+    await api.logout();
     setCurrentUser(null);
   };
 
   const handleNewOS = () => {
+    setSelectedOS(null);
+    setIsPrintingOS(false);
     setActiveTab('os');
     setIsCreatingOS(true);
   };
 
-  const handleSaveOS = (data: any) => {
-    api.createOS(data);
-    alert("Ordem de Serviço salva com sucesso!");
-    setIsCreatingOS(false);
+  const handleSaveOS = async (data: any) => {
+    console.log('App: handleSaveOS chamado com dados:', data);
+    try {
+      const { model, brand, color, capacity, imei, password, itemsLeft, ...rest } = data;
+      
+      const osData = {
+        ...rest,
+        device: {
+          model,
+          brand,
+          color,
+          capacity,
+          imei,
+          password,
+          itemsLeft: typeof itemsLeft === 'string' ? itemsLeft.split(',').map((s: string) => s.trim()).filter(Boolean) : itemsLeft
+        },
+        responsibleId: currentUser?.id || '',
+        responsibleName: currentUser?.name || '',
+        financial: {
+          partsValue: data.parts.reduce((acc: number, p: any) => acc + (p.unitPrice * p.quantity), 0),
+          laborValue: data.laborValue,
+          totalValue: data.laborValue + data.parts.reduce((acc: number, p: any) => acc + (p.unitPrice * p.quantity), 0)
+        }
+      };
+
+      if (selectedOS) {
+        await api.updateOS(selectedOS.id, osData);
+        alert("Ordem de Serviço atualizada com sucesso!");
+      } else {
+        await api.createOS(osData);
+        alert("Ordem de Serviço salva com sucesso!");
+      }
+      
+      setIsCreatingOS(false);
+      setSelectedOS(null);
+      setActiveTab('os');
+    } catch (error) {
+      console.error('Erro ao salvar OS:', error);
+      alert('Erro ao salvar Ordem de Serviço.');
+    }
   };
 
   if (!currentUser) {
@@ -74,53 +186,89 @@ const App: React.FC = () => {
     const restrictedTabs = ['caixa', 'fornecedores', 'configuracoes', 'usuarios', 'auditoria', 'comissoes'];
     if (currentUser.role === 'USER' && restrictedTabs.includes(activeTab)) {
       setActiveTab('dashboard');
-      return <Dashboard onNewOS={handleNewOS} onViewAllOS={() => setActiveTab('os')} />;
+      return (
+        <ErrorBoundary>
+          <Dashboard onNewOS={handleNewOS} onViewAllOS={() => setActiveTab('os')} />
+        </ErrorBoundary>
+      );
     }
 
+    let content;
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard onNewOS={handleNewOS} onViewAllOS={() => setActiveTab('os')} />;
+        content = <Dashboard onNewOS={handleNewOS} onViewAllOS={() => setActiveTab('os')} />;
+        break;
       case 'os':
-        return isCreatingOS ? 
-          <ServiceOrderForm onBack={() => setIsCreatingOS(false)} onSave={handleSaveOS} /> : 
-          <ServiceOrdersList onNewOS={() => setIsCreatingOS(true)} />;
+        content = isCreatingOS ? 
+          <ServiceOrderForm 
+            onBack={() => { setIsCreatingOS(false); setSelectedOS(null); setIsPrintingOS(false); }} 
+            onSave={handleSaveOS} 
+            initialData={selectedOS}
+            printOnLoad={isPrintingOS}
+          /> : 
+          <ServiceOrdersList 
+            onNewOS={() => { setIsCreatingOS(true); setSelectedOS(null); setIsPrintingOS(false); }} 
+            onViewOS={(os) => { setSelectedOS(os); setIsCreatingOS(true); setIsPrintingOS(false); }}
+            onPrintOS={(os) => { setSelectedOS(os); setIsCreatingOS(true); setIsPrintingOS(true); }}
+            onDeleteOS={async (id) => { await api.removeOS(id); }}
+          />;
+        break;
       case 'clientes':
-        return <ClientsView />;
+        content = <ClientsView />;
+        break;
       case 'fornecedores':
-        return <SuppliersView />;
+        content = <SuppliersView />;
+        break;
       case 'lista-compras':
-        return <ShoppingListView />;
+        content = <ShoppingListView />;
+        break;
       case 'estoque':
       case 'produtos':
-        return <InventoryView />;
+        content = <InventoryView />;
+        break;
       case 'caixa':
-        return <CashView />;
+        content = <CashView />;
+        break;
       case 'pre-orcamento':
-        return <PreOrcamentoView />;
+        content = <PreOrcamentoView />;
+        break;
       case 'configuracoes':
-        return <SettingsView />;
+        content = <SettingsView />;
+        break;
       case 'usuarios':
-        return <UserManagementView currentUser={currentUser} onUpdateSelf={handleUpdateSelf} />;
+        content = <UserManagementView currentUser={currentUser} onUpdateSelf={handleUpdateSelf} />;
+        break;
       case 'auditoria':
-        return <AuditLogsView />;
+        content = <AuditLogsView />;
+        break;
       case 'comissoes':
-        return <CommissionsView />;
+        content = <CommissionsView />;
+        break;
       default:
-        return <Dashboard onNewOS={handleNewOS} onViewAllOS={() => setActiveTab('os')} />;
+        content = <Dashboard onNewOS={handleNewOS} onViewAllOS={() => setActiveTab('os')} />;
     }
+
+    return (
+      <ErrorBoundary>
+        {content}
+      </ErrorBoundary>
+    );
   };
 
   return (
-    <Layout 
-      user={currentUser} 
-      activeTab={activeTab} 
-      setActiveTab={(tab) => {
-        setActiveTab(tab);
-        setIsCreatingOS(false);
-      }}
-    >
-      {renderContent()}
-    </Layout>
+    <ErrorBoundary>
+      <Layout 
+        user={currentUser} 
+        activeTab={activeTab} 
+        setActiveTab={(tab) => {
+          setActiveTab(tab);
+          setIsCreatingOS(false);
+        }}
+        onLogout={handleLogout}
+      >
+        {renderContent()}
+      </Layout>
+    </ErrorBoundary>
   );
 };
 

@@ -1,193 +1,455 @@
+import { db, auth } from "@/firebase";
+import { 
+  collection, 
+  getDocs, 
+  addDoc, 
+  updateDoc, 
+  doc, 
+  getDoc,
+  deleteDoc,
+  query,
+  where,
+  orderBy,
+  setDoc,
+  limit
+} from "firebase/firestore";
+import { signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "firebase/auth";
+import { Client, ServiceOrder, Product, CashTransaction, OSStatus, User, ActivityLog, CommissionReport, Supplier, CatalogItem, Reminder } from "../types";
 
-import { Client, ServiceOrder, Product, CashTransaction, OSStatus, User, ActivityLog, CommissionReport } from '../types';
-
-const STORAGE_KEY = 'asim_db_v1';
-const USERS_KEY = 'asim_users_v1';
-const LOGS_KEY = 'asim_logs_v1';
-
-const getDb = () => {
-  const data = localStorage.getItem(STORAGE_KEY);
-  return data ? JSON.parse(data) : { clients: [], os: [], products: [], transactions: [] };
+const withTimeout = <T>(promise: Promise<T>, timeoutMs: number = 10000): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error('Tempo de resposta excedido (Timeout). Verifique sua conexão ou configuração do Firebase.')), timeoutMs))
+  ]);
 };
 
-const saveDb = (db: any) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
-};
+// --- COLEÇÕES FIREBASE ---
+console.log('API: db disponível:', !!db);
+const CLIENTS_COL = collection(db, "clients");
+const PRODUCTS_COL = collection(db, "products");
+const OS_COL = collection(db, "service_orders");
+const LOGS_COL = collection(db, "activity_logs");
+const USERS_COL = collection(db, "users");
+const SUPPLIERS_COL = collection(db, "suppliers");
+const TRANSACTIONS_COL = collection(db, "transactions");
+const CATALOG_COL = collection(db, "catalog");
+const REMINDERS_COL = collection(db, "reminders");
 
-const getCurrentUser = (): User | null => {
-  const session = localStorage.getItem('asim_session');
-  return session ? JSON.parse(session) : null;
-};
-
-const registerLog = (action: string, details: string, severity: ActivityLog['severity'] = 'info') => {
-  const user = getCurrentUser();
-  const logsData = localStorage.getItem(LOGS_KEY);
-  const logs: ActivityLog[] = logsData ? JSON.parse(logsData) : [];
-  
-  const newLog: ActivityLog = {
-    id: Math.random().toString(36).substr(2, 9),
-    userId: user?.id || 'system',
-    userName: user?.name || 'Sistema',
-    action,
-    details,
-    severity,
-    timestamp: new Date().toISOString()
-  };
-  
-  logs.unshift(newLog);
-  localStorage.setItem(LOGS_KEY, JSON.stringify(logs.slice(0, 500)));
-};
-
-const getUsers = (): User[] => {
-  const data = localStorage.getItem(USERS_KEY);
-  if (!data) {
-    const admin: User = { 
-      id: 'admin-1', 
-      username: 'admin', 
-      password: '123', 
-      name: 'Administrador Asim', 
-      role: 'ADMIN', 
-      commissionRate: 0,
-      createdAt: new Date().toISOString() 
-    };
-    localStorage.setItem(USERS_KEY, JSON.stringify([admin]));
-    return [admin];
+// --- CLIENTES ---
+export const getClients = async (): Promise<Client[]> => {
+  try {
+    const snapshot = await withTimeout(getDocs(CLIENTS_COL));
+    return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Client));
+  } catch (error) {
+    console.error('Erro ao buscar clientes no Firebase:', error);
+    throw error;
   }
-  return JSON.parse(data);
 };
 
+export const saveClient = async (client: Omit<Client, "id">): Promise<Client> => {
+  console.log('Iniciando salvamento de cliente...', client);
+  try {
+    const docRef = await withTimeout(addDoc(CLIENTS_COL, {
+      ...client,
+      createdAt: new Date().toISOString()
+    }));
+    console.log('Cliente salvo no Firebase:', docRef.id);
+    return { ...client, id: docRef.id } as Client;
+  } catch (error) {
+    console.error('Erro ao salvar no Firebase:', error);
+    throw error;
+  }
+};
+
+export const updateClient = async (id: string, updates: Partial<Client>): Promise<void> => {
+  const clientRef = doc(db, "clients", id);
+  await updateDoc(clientRef, updates);
+};
+
+export const removeClient = async (id: string): Promise<void> => {
+  await deleteDoc(doc(db, "clients", id));
+};
+
+// --- ESTOQUE (PRODUTOS) ---
+export const getInventory = async (): Promise<Product[]> => {
+  try {
+    const snapshot = await withTimeout(getDocs(PRODUCTS_COL));
+    return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Product));
+  } catch (error) {
+    console.error('Erro ao buscar estoque no Firebase:', error);
+    throw error;
+  }
+};
+
+export const saveProduct = async (product: Omit<Product, "id">): Promise<Product> => {
+  try {
+    const docRef = await withTimeout(addDoc(PRODUCTS_COL, {
+      ...product,
+      createdAt: new Date().toISOString()
+    }));
+    return { ...product, id: docRef.id } as Product;
+  } catch (error) {
+    console.error('Erro ao salvar produto no Firebase:', error);
+    throw error;
+  }
+};
+
+// --- ORDENS DE SERVIÇO (OS) ---
+export const getServiceOrders = async (limitCount: number = 300): Promise<ServiceOrder[]> => {
+  try {
+    // Agora busca apenas as 300 últimas OS para evitar cobrança excessiva no Firebase e lentidão
+    const q = query(OS_COL, orderBy("openedAt", "desc"), limit(limitCount));
+    const snapshot = await withTimeout(getDocs(q));
+    return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as ServiceOrder));
+  } catch (error) {
+    console.error('Erro ao buscar OS no Firebase:', error);
+    throw error;
+  }
+};
+
+export const saveServiceOrder = async (os: Omit<ServiceOrder, "id">): Promise<ServiceOrder> => {
+  console.log('Iniciando salvamento de OS...', os);
+  try {
+    const docRef = await withTimeout(addDoc(OS_COL, {
+      ...os,
+      openedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }));
+    console.log('OS salva no Firebase:', docRef.id);
+    return { ...os, id: docRef.id } as ServiceOrder;
+  } catch (error) {
+    console.error('Erro ao salvar OS no Firebase:', error);
+    throw error;
+  }
+};
+
+export const updateOSStatus = async (id: string, newStatus: OSStatus): Promise<void> => {
+  const osRef = doc(db, "service_orders", id);
+  await updateDoc(osRef, { 
+    status: newStatus,
+    updatedAt: new Date().toISOString()
+  });
+};
+
+export const updateServiceOrder = async (id: string, updates: Partial<ServiceOrder>): Promise<void> => {
+  const osRef = doc(db, "service_orders", id);
+  await updateDoc(osRef, { 
+    ...updates,
+    updatedAt: new Date().toISOString()
+  });
+};
+
+// --- FORNECEDORES ---
+export const getSuppliers = async (): Promise<Supplier[]> => {
+  try {
+    const snapshot = await withTimeout(getDocs(SUPPLIERS_COL));
+    return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Supplier));
+  } catch (error) {
+    console.error('Erro ao buscar fornecedores no Firebase:', error);
+    throw error;
+  }
+};
+
+export const saveSupplier = async (supplier: Omit<Supplier, "id">): Promise<Supplier> => {
+  try {
+    const docRef = await withTimeout(addDoc(SUPPLIERS_COL, supplier));
+    return { ...supplier, id: docRef.id } as Supplier;
+  } catch (error) {
+    console.error('Erro ao salvar fornecedor no Firebase:', error);
+    throw error;
+  }
+};
+
+// --- TRANSAÇÕES FINANCEIRAS ---
+export const getTransactions = async (limitCount: number = 500): Promise<CashTransaction[]> => {
+  try {
+    const q = query(TRANSACTIONS_COL, orderBy("date", "desc"), limit(limitCount));
+    const snapshot = await withTimeout(getDocs(q));
+    return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as CashTransaction));
+  } catch (error) {
+    console.error('Erro ao buscar transações no Firebase:', error);
+    throw error;
+  }
+};
+
+export const saveTransaction = async (transaction: Omit<CashTransaction, "id">): Promise<CashTransaction> => {
+  try {
+    const docRef = await withTimeout(addDoc(TRANSACTIONS_COL, transaction));
+    return { ...transaction, id: docRef.id } as CashTransaction;
+  } catch (error) {
+    console.error('Erro ao salvar transação no Firebase:', error);
+    throw error;
+  }
+};
+
+// --- CATÁLOGO DE PREÇOS ---
+export const getCatalog = async (): Promise<CatalogItem[]> => {
+  try {
+    const snapshot = await withTimeout(getDocs(CATALOG_COL));
+    return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as CatalogItem));
+  } catch (error) {
+    console.error('Erro ao buscar catálogo no Firebase:', error);
+    throw error;
+  }
+};
+
+export const saveCatalogItem = async (item: Omit<CatalogItem, "id">): Promise<CatalogItem> => {
+  try {
+    const docRef = await withTimeout(addDoc(CATALOG_COL, item));
+    return { ...item, id: docRef.id } as CatalogItem;
+  } catch (error) {
+    console.error('Erro ao salvar item do catálogo no Firebase:', error);
+    throw error;
+  }
+};
+
+export const deleteCatalogItem = async (id: string): Promise<void> => {
+  await deleteDoc(doc(db, "catalog", id));
+};
+
+// --- LEMBRETES DE COMPRA ---
+export const getReminders = async (): Promise<Reminder[]> => {
+  try {
+    const snapshot = await withTimeout(getDocs(REMINDERS_COL));
+    return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Reminder));
+  } catch (error) {
+    console.error('Erro ao buscar lembretes no Firebase:', error);
+    throw error;
+  }
+};
+
+export const saveReminder = async (reminder: Omit<Reminder, "id">): Promise<Reminder> => {
+  if (!USE_FIREBASE) return addLS('reminders', reminder);
+  try {
+    const docRef = await withTimeout(addDoc(REMINDERS_COL, reminder));
+    return { ...reminder, id: docRef.id } as Reminder;
+  } catch (error) {
+    console.error('Erro ao salvar lembrete no Firebase:', error);
+    throw error;
+  }
+};
+
+export const updateReminder = async (id: string, updates: Partial<Reminder>): Promise<void> => {
+  await updateDoc(doc(db, "reminders", id), updates);
+};
+
+export const deleteReminder = async (id: string): Promise<void> => {
+  await deleteDoc(doc(db, "reminders", id));
+};
+
+// --- LOGS ---
+export const registerLog = async (action: string, details: string, severity: 'info' | 'warning' | 'danger' = 'info') => {
+  try {
+    await addDoc(LOGS_COL, {
+      action,
+      details,
+      severity,
+      timestamp: new Date().toISOString(),
+      userName: auth.currentUser?.email || "Sistema" 
+    });
+  } catch (error) {
+    console.error('Erro ao registrar log:', error);
+  }
+};
+
+// --- USUÁRIOS (Login Simples) ---
+export const getUsers = async (): Promise<User[]> => {
+  try {
+    const snapshot = await getDocs(USERS_COL);
+    if (snapshot.empty) {
+      // Cria usuário admin padrão se não existir nenhum
+      const adminUser = {
+        username: 'admin',
+        password: '123',
+        name: 'Administrador',
+        role: 'ADMIN',
+        commissionRate: 0,
+        createdAt: new Date().toISOString()
+      };
+      await addDoc(USERS_COL, adminUser);
+      return [adminUser as any];
+    }
+    return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User));
+  } catch (error: any) {
+    // Caso de falta de permissão (Usuário padrão tentou listar toda a coleção mas a rule bloqueou)
+    if (error.code === 'permission-denied' && auth.currentUser) {
+      console.warn("Acesso negado ao buscar lista de usuários (apenas admins podem ver todos). Retornando apenas próprio perfil.");
+      const currentDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
+      if (currentDoc.exists()) {
+        return [{ ...currentDoc.data(), id: currentDoc.id } as User];
+      }
+    }
+    console.warn("Erro ao buscar usuários (pode não haver usuários ou regras estritas): ", error);
+    return [];
+  }
+};
+
+/**
+ * OBJETO DE COMPATIBILIDADE (API)
+ * Mantém o funcionamento das telas existentes que chamam 'api.metodo()'
+ */
 export const api = {
-  // --- AUDITORIA ---
-  getLogs: async (): Promise<ActivityLog[]> => {
-    const data = localStorage.getItem(LOGS_KEY);
-    return data ? JSON.parse(data) : [];
+  login: async (email: string, pass: string): Promise<User | null> => {
+    try {
+      // Login Real com Firebase Auth
+      const userCredential = await signInWithEmailAndPassword(auth, email, pass);
+      const firebaseUser = userCredential.user;
+
+      // Busca perfil no Firestore
+      const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
+      
+      if (userDoc.exists()) {
+        const userData = userDoc.data() as User;
+        await registerLog('Login', `Usuário ${email} acessou via Firebase`);
+        return { ...userData, id: firebaseUser.uid };
+      } else {
+        const newUser: User = {
+          id: firebaseUser.uid,
+          username: email,
+          name: email.split('@')[0],
+          role: email === 'deyvisongomo@gmail.com' ? 'ADMIN' : 'USER',
+          commissionRate: 0,
+          createdAt: new Date().toISOString()
+        };
+        await setDoc(doc(db, "users", firebaseUser.uid), newUser);
+        return newUser;
+      }
+    } catch (error: any) {
+      console.error("Erro no login Firebase:", error);
+      // Lança o erro para que a View possa tratar
+      throw error;
+    }
   },
 
-  // --- COMISSÕES ---
-  getCommissions: async (startDate: string, endDate: string): Promise<CommissionReport[]> => {
-    const db = getDb();
-    const users = getUsers();
-    const deliveredOS = db.os.filter((o: ServiceOrder) => {
-      const date = o.updatedAt.split('T')[0];
-      return o.status === OSStatus.ENTREGUE && date >= startDate && date <= endDate;
+  recoverPassword: async (email: string): Promise<boolean> => {
+    try {
+      await sendPasswordResetEmail(auth, email);
+      return true;
+    } catch (error) {
+      console.error('Falha na recuperação de senha:', error);
+      throw error;
+    }
+  },
+
+  logout: async () => {
+    await signOut(auth);
+    localStorage.removeItem('asim_session');
+  },
+
+  getCurrentUser: (): Promise<User | null> => {
+    return new Promise((resolve) => {
+      onAuthStateChanged(auth, async (firebaseUser) => {
+        if (firebaseUser) {
+          const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
+          if (userDoc.exists()) {
+            resolve({ ...userDoc.data(), id: firebaseUser.uid } as User);
+          } else {
+            resolve(null);
+          }
+        } else {
+          resolve(null);
+        }
+      });
+    });
+  },
+
+  // Ordens de Serviço
+  getOS: getServiceOrders,
+  getServiceOrders: getServiceOrders,
+  createOS: saveServiceOrder,
+  updateOS: updateServiceOrder,
+  updateOSStatus: updateOSStatus,
+  removeOS: async (id: string): Promise<void> => {
+    await deleteDoc(doc(db, "service_orders", id));
+  },
+
+  // Clientes
+  getClients: getClients,
+  saveClient: saveClient,
+  updateClient: updateClient,
+  removeClient: removeClient,
+
+  // Estoque
+  getInventory: getInventory,
+  saveProduct: saveProduct,
+  getDeadStock: async (): Promise<Product[]> => {
+    const products = await getInventory();
+    const sixtyDaysAgo = new Date();
+    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+    return products.filter(p => p.lastSaleAt && new Date(p.lastSaleAt) < sixtyDaysAgo && p.quantity > 0);
+  },
+
+  // Fornecedores
+  getSuppliers: getSuppliers,
+  saveSupplier: saveSupplier,
+
+  // Financeiro
+  getTransactions: getTransactions,
+  saveTransaction: saveTransaction,
+
+  // Catálogo
+  getCatalog: getCatalog,
+  saveCatalogItem: saveCatalogItem,
+  deleteCatalogItem: deleteCatalogItem,
+
+  // Lembretes
+  getReminders: getReminders,
+  saveReminder: saveReminder,
+  updateReminder: updateReminder,
+  deleteReminder: deleteReminder,
+
+  // Logs e Comissões
+  getLogs: async (limitCount: number = 100): Promise<ActivityLog[]> => {
+    const q = query(LOGS_COL, orderBy("timestamp", "desc"), limit(limitCount));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as ActivityLog[];
+  },
+
+  getCommissions: async (start: string, end: string): Promise<CommissionReport[]> => {
+    const orders = await getServiceOrders();
+    const delivered = orders.filter(o => {
+      if (o.status !== OSStatus.ENTREGUE) return false;
+      const date = o.updatedAt?.split('T')[0];
+      return date && date >= start && date <= end;
     });
 
+    const users = await getUsers();
+    
     return users.map(user => {
-      const userOS = deliveredOS.filter((o: ServiceOrder) => o.responsibleId === user.id);
-      const totalLabor = userOS.reduce((acc: number, o: ServiceOrder) => acc + o.financial.laborValue, 0);
+      // Filtra OS onde o usuário é o responsável
+      const userOS = delivered.filter(o => o.responsibleId === user.id);
+      const totalLabor = userOS.reduce((acc, o) => acc + (Number(o.financial?.laborValue) || 0), 0);
+      const totalValue = userOS.reduce((acc, o) => acc + (Number(o.financial?.totalValue) || 0), 0);
+      
       return {
         userId: user.id,
-        userName: user.name,
+        userName: user.name || 'Sem Nome',
         totalServices: totalLabor,
-        totalValue: userOS.reduce((acc: number, o: ServiceOrder) => acc + o.financial.totalValue, 0),
-        commissionValue: (totalLabor * user.commissionRate) / 100,
+        totalValue: totalValue,
+        commissionValue: (totalLabor * (Number(user.commissionRate) || 0)) / 100,
         osCount: userOS.length
       };
     });
   },
 
-  // --- USUÁRIOS E AUTH ---
-  login: async (username: string, pass: string): Promise<User | null> => {
-    const users = getUsers();
-    const user = users.find(u => u.username === username && u.password === pass);
-    if (user) {
-      registerLog('Login', `Usuário ${user.username} acessou o sistema`);
-      const { password, ...userWithoutPass } = user;
-      return userWithoutPass as User;
-    }
-    registerLog('Falha de Login', `Tentativa de acesso com usuário: ${username}`, 'warning');
-    return null;
-  },
-
-  getUsersList: async (): Promise<User[]> => {
-    return getUsers();
-  },
-
-  addUser: async (userData: Omit<User, 'id' | 'createdAt'>): Promise<{success: boolean, message: string}> => {
-    const users = getUsers();
-    const newUser = {
-      ...userData,
-      id: Math.random().toString(36).substr(2, 9),
-      createdAt: new Date().toISOString()
-    };
-    users.push(newUser);
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
-    registerLog('Criação de Usuário', `Novo usuário: ${newUser.name}`, 'info');
+  // Gestão de Usuários
+  getUsersList: getUsers,
+  addUser: async (userData: any) => {
+    const data = { ...userData, createdAt: new Date().toISOString() };
+    await addDoc(USERS_COL, data);
+    await registerLog('Equipe', `Novo usuário ${userData.name} cadastrado no Firebase`);
     return { success: true, message: 'Usuário cadastrado com sucesso.' };
   },
-
-  updateUser: async (id: string, updates: Partial<User>): Promise<User> => {
-    const users = getUsers();
-    const index = users.findIndex(u => u.id === id);
-    if (index === -1) throw new Error("Usuário não encontrado");
-    users[index] = { ...users[index], ...updates };
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
-    registerLog('Alteração de Perfil', `Perfil de ${users[index].name} atualizado`, 'warning');
-    const { password, ...userWithoutPass } = users[index];
-    return userWithoutPass as User;
+  updateUser: async (id: string, updates: any) => {
+    const userRef = doc(db, "users", id);
+    await updateDoc(userRef, updates);
+    await registerLog('Equipe', `Usuário ${updates.name || id} atualizado no Firebase`);
+    return { ...updates, id };
   },
-
-  removeUser: async (id: string): Promise<void> => {
-    const users = getUsers();
-    const filtered = users.filter(u => u.id !== id || u.id === 'admin-1');
-    localStorage.setItem(USERS_KEY, JSON.stringify(filtered));
-  },
-
-  // --- ORDENS DE SERVIÇO ---
-  getOS: async (): Promise<ServiceOrder[]> => getDb().os,
-  
-  createOS: async (osData: any): Promise<ServiceOrder> => {
-    const db = getDb();
-    const user = getCurrentUser();
-    const newOS = {
-      ...osData,
-      id: Math.random().toString(36).substr(2, 9),
-      osNumber: (db.os.length + 1001).toString(),
-      responsibleId: user?.id || 'admin-1',
-      responsibleName: user?.name || 'Administrador',
-      openedAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      status: OSStatus.RECEBIDO
-    };
-    db.os.push(newOS);
-    saveDb(db);
-    registerLog('Nova OS', `OS #${newOS.osNumber} aberta para ${newOS.clientName}`, 'info');
-    return newOS;
-  },
-
-  updateOSStatus: async (id: string, newStatus: OSStatus): Promise<void> => {
-    const db = getDb();
-    const os = db.os.find((o: ServiceOrder) => o.id === id);
-    if (os) {
-      const oldStatus = os.status;
-      os.status = newStatus;
-      os.updatedAt = new Date().toISOString();
-      saveDb(db);
-      registerLog('Status OS', `OS #${os.osNumber} -> ${newStatus}`, 'info');
-    }
-  },
-
-  // --- OUTROS ---
-  getClients: async (): Promise<Client[]> => getDb().clients,
-  saveClient: async (client: any) => {
-    const db = getDb();
-    const newC = {...client, id: Math.random().toString(36).substr(2, 9), createdAt: new Date().toISOString()};
-    db.clients.push(newC);
-    saveDb(db);
-    return newC;
-  },
-  getInventory: async (): Promise<Product[]> => getDb().products,
-  saveProduct: async (product: any) => {
-    const db = getDb();
-    const newP = {...product, id: Math.random().toString(36).substr(2, 9), createdAt: new Date().toISOString(), lastSaleAt: new Date().toISOString()};
-    db.products.push(newP);
-    saveDb(db);
-    return newP;
-  },
-  getDeadStock: async (): Promise<Product[]> => {
-    const db = getDb();
-    const sixtyDaysAgo = new Date();
-    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
-    return db.products.filter((p: Product) => p.lastSaleAt && new Date(p.lastSaleAt) < sixtyDaysAgo && p.quantity > 0);
+  removeUser: async (id: string) => {
+    const userRef = doc(db, "users", id);
+    await deleteDoc(userRef);
+    await registerLog('Equipe', `Usuário ID ${id} removido do Firebase`, 'danger');
+    return { success: true };
   }
 };

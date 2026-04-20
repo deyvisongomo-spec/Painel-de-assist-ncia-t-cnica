@@ -1,20 +1,78 @@
 
-import React, { useState } from 'react';
-import { DollarSign, ArrowUpCircle, ArrowDownCircle, ShoppingCart, Plus, Search, Trash2, FileText, Calendar } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { DollarSign, ArrowUpCircle, ArrowDownCircle, ShoppingCart, Plus, Search, Trash2, FileText, Calendar, X, Save, Loader2 } from 'lucide-react';
 import CashReportView from './CashReportView';
+import { api } from '../services/api';
+import { CashTransaction } from '../types';
 
 const CashView: React.FC = () => {
   const [isQuickSale, setIsQuickSale] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [transactions, setTransactions] = useState<CashTransaction[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Mock de transações para demonstração
-  const transactions = [
-    { id: '1', desc: 'Sinal OS #8452', type: 'entrada', val: 150, date: '2024-05-22T10:45:00', method: 'Pix' },
-    { id: '2', desc: 'Venda Película 3D', type: 'entrada', val: 45, date: '2024-05-22T11:15:00', method: 'Dinheiro' },
-    { id: '3', desc: 'Compra de Suprimentos', type: 'saida', val: 80, date: '2024-05-22T12:00:00', method: 'Cartão de Débito' },
-    { id: '4', desc: 'Troca de Tela iPhone 11', type: 'entrada', val: 450, date: '2024-05-22T14:30:00', method: 'Cartão de Crédito' },
-    { id: '5', desc: 'Conector de Carga Moto G8', type: 'entrada', val: 120, date: '2024-05-21T16:00:00', method: 'Pix' },
-  ];
+  // Form State for manual transaction
+  const [formData, setFormData] = useState<Omit<CashTransaction, 'id' | 'date'>>({
+    description: '',
+    type: 'entrada',
+    value: 0,
+    paymentMethod: 'Pix',
+  });
+
+  useEffect(() => {
+    loadTransactions();
+  }, []);
+
+  const loadTransactions = async () => {
+    setIsLoading(true);
+    try {
+      const data = await api.getTransactions();
+      setTransactions(data);
+    } catch (error) {
+      console.error('Erro ao carregar transações:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSaveTransaction = async () => {
+    if (!formData.description || formData.value <= 0) {
+      alert('Descrição e Valor são obrigatórios!');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await api.saveTransaction({
+        ...formData,
+        date: new Date().toISOString(),
+      });
+      setIsFormOpen(false);
+      setFormData({
+        description: '',
+        type: 'entrada',
+        value: 0,
+        paymentMethod: 'Pix',
+      });
+      loadTransactions();
+    } catch (error) {
+      console.error('Erro ao salvar transação:', error);
+      alert('Erro ao salvar transação.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const totals = transactions.reduce((acc, t) => {
+    const isToday = new Date(t.date).toDateString() === new Date().toDateString();
+    if (isToday) {
+      if (t.type === 'entrada') acc.entries += t.value;
+      else acc.exits += t.value;
+    }
+    return acc;
+  }, { entries: 0, exits: 0 });
 
   if (showReport) {
     return <CashReportView transactions={transactions} onBack={() => setShowReport(false)} />;
@@ -53,13 +111,7 @@ const CashView: React.FC = () => {
                    </tr>
                  </thead>
                  <tbody className="divide-y divide-slate-100">
-                    <tr className="hover:bg-slate-50">
-                      <td className="px-6 py-4 text-sm font-semibold">Capa Silicone iPhone 13 - Azul</td>
-                      <td className="px-6 py-4 text-center">1</td>
-                      <td className="px-6 py-4 text-right text-sm">R$ 50,00</td>
-                      <td className="px-6 py-4 text-right text-sm font-bold">R$ 50,00</td>
-                      <td className="px-6 py-4 text-center"><button className="text-rose-400 hover:text-rose-600"><Trash2 size={16}/></button></td>
-                    </tr>
+                    {/* Itens da venda rápida seriam gerenciados aqui */}
                  </tbody>
                </table>
                <div className="p-10 text-center text-slate-400 italic">
@@ -106,6 +158,88 @@ const CashView: React.FC = () => {
     );
   }
 
+  if (isFormOpen) {
+    return (
+      <div className="animate-in slide-in-from-right duration-300 space-y-6 pb-20">
+        <div className="flex items-center justify-between mb-8 sticky top-0 bg-slate-50/80 backdrop-blur-md py-4 z-20">
+          <div>
+             <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Nova Movimentação</h2>
+             <p className="text-slate-500 text-sm">Registre entradas ou saídas manuais do caixa.</p>
+          </div>
+          <button onClick={() => setIsFormOpen(false)} className="p-3 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-slate-800 shadow-sm transition-all"><X size={20}/></button>
+        </div>
+
+        <div className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-10">
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="md:col-span-2">
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1">Descrição *</label>
+                <input 
+                  type="text" 
+                  required 
+                  className="w-full p-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none shadow-sm font-semibold" 
+                  placeholder="Ex: Pagamento de Aluguel, Venda de Acessório"
+                  value={formData.description}
+                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1">Tipo *</label>
+                <select 
+                  className="w-full p-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none shadow-sm font-semibold"
+                  value={formData.type}
+                  onChange={(e) => setFormData({...formData, type: e.target.value as any})}
+                >
+                  <option value="entrada">Entrada (+)</option>
+                  <option value="saida">Saída (-)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1">Valor (R$) *</label>
+                <input 
+                  type="number" 
+                  className="w-full p-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none shadow-sm font-semibold" 
+                  value={formData.value}
+                  onChange={(e) => setFormData({...formData, value: Number(e.target.value)})}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1">Forma de Pagamento</label>
+                <select 
+                  className="w-full p-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none shadow-sm font-semibold"
+                  value={formData.paymentMethod}
+                  onChange={(e) => setFormData({...formData, paymentMethod: e.target.value})}
+                >
+                  <option>Pix</option>
+                  <option>Dinheiro</option>
+                  <option>Cartão de Crédito</option>
+                  <option>Cartão de Débito</option>
+                  <option>Transferência</option>
+                </select>
+              </div>
+           </div>
+
+           <div className="flex justify-end gap-4 pt-8">
+              <button 
+                onClick={() => setIsFormOpen(false)} 
+                disabled={isSaving}
+                className="px-8 py-3 bg-white border border-slate-200 rounded-xl text-slate-600 font-bold hover:bg-slate-50 transition-all shadow-sm disabled:opacity-50"
+              >
+                Descartar
+              </button>
+              <button 
+                onClick={handleSaveTransaction}
+                disabled={isSaving}
+                className="px-12 py-3 bg-blue-600 text-white rounded-xl font-black shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all uppercase tracking-widest flex items-center gap-3 active:scale-95 disabled:opacity-50"
+              >
+                 {isSaving ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
+                 Salvar Lançamento
+              </button>
+           </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
       <div className="flex flex-col md:flex-row items-center justify-between gap-4">
@@ -123,7 +257,10 @@ const CashView: React.FC = () => {
            <button onClick={() => setIsQuickSale(true)} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-xl font-bold shadow-lg shadow-emerald-100">
              <ShoppingCart size={18} /> Venda Rápida
            </button>
-           <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl font-bold">
+           <button 
+             onClick={() => setIsFormOpen(true)}
+             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl font-bold"
+           >
              <Plus size={18} /> Nova Movimentação
            </button>
         </div>
@@ -135,21 +272,21 @@ const CashView: React.FC = () => {
              <ArrowUpCircle size={24} />
              <span className="text-xs font-bold uppercase tracking-wider">Entradas Hoje</span>
            </div>
-           <p className="text-3xl font-black text-slate-800">R$ 645,00</p>
+           <p className="text-3xl font-black text-slate-800">R$ {totals.entries.toFixed(2)}</p>
         </div>
         <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
            <div className="flex items-center gap-3 text-rose-600 mb-2">
              <ArrowDownCircle size={24} />
              <span className="text-xs font-bold uppercase tracking-wider">Saídas Hoje</span>
            </div>
-           <p className="text-3xl font-black text-slate-800">R$ 80,00</p>
+           <p className="text-3xl font-black text-slate-800">R$ {totals.exits.toFixed(2)}</p>
         </div>
         <div className="bg-slate-900 p-6 rounded-2xl shadow-xl text-white">
            <div className="flex items-center gap-3 text-blue-400 mb-2">
              <DollarSign size={24} />
              <span className="text-xs font-bold uppercase tracking-wider">Saldo do Dia</span>
            </div>
-           <p className="text-3xl font-black">R$ 565,00</p>
+           <p className="text-3xl font-black">R$ {(totals.entries - totals.exits).toFixed(2)}</p>
         </div>
       </div>
 
@@ -157,38 +294,49 @@ const CashView: React.FC = () => {
         <div className="px-6 py-4 border-b">
           <h3 className="font-bold text-slate-800">Lançamentos Recentes</h3>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-             <thead className="bg-slate-50 text-[10px] font-bold uppercase text-slate-500 border-b">
-               <tr>
-                 <th className="px-6 py-4">Data/Hora</th>
-                 <th className="px-6 py-4">Descrição</th>
-                 <th className="px-6 py-4">Tipo</th>
-                 <th className="px-6 py-4">Pagamento</th>
-                 <th className="px-6 py-4 text-right">Valor</th>
-               </tr>
-             </thead>
-             <tbody className="divide-y divide-slate-100">
-               {transactions.map(t => (
-                 <tr key={t.id} className="hover:bg-slate-50">
-                   <td className="px-6 py-4 text-xs text-slate-500">
-                     {new Date(t.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                   </td>
-                   <td className="px-6 py-4 text-sm font-semibold">{t.desc}</td>
-                   <td className="px-6 py-4">
-                     <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${t.type === 'entrada' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
-                       {t.type}
-                     </span>
-                   </td>
-                   <td className="px-6 py-4 text-xs text-slate-500">{t.method}</td>
-                   <td className={`px-6 py-4 text-right font-bold text-sm ${t.type === 'entrada' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                     {t.type === 'entrada' ? '+' : '-'} R$ {t.val.toFixed(2)}
-                   </td>
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-4">
+            <Loader2 className="animate-spin text-blue-600" size={40} />
+            <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Carregando Lançamentos...</p>
+          </div>
+        ) : transactions.length === 0 ? (
+          <div className="py-20 text-center">
+            <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Nenhum lançamento encontrado</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+               <thead className="bg-slate-50 text-[10px] font-bold uppercase text-slate-500 border-b">
+                 <tr>
+                   <th className="px-6 py-4">Data/Hora</th>
+                   <th className="px-6 py-4">Descrição</th>
+                   <th className="px-6 py-4">Tipo</th>
+                   <th className="px-6 py-4">Pagamento</th>
+                   <th className="px-6 py-4 text-right">Valor</th>
                  </tr>
-               ))}
-             </tbody>
-          </table>
-        </div>
+               </thead>
+               <tbody className="divide-y divide-slate-100">
+                 {transactions.map(t => (
+                   <tr key={t.id} className="hover:bg-slate-50">
+                     <td className="px-6 py-4 text-xs text-slate-500">
+                       {new Date(t.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                     </td>
+                     <td className="px-6 py-4 text-sm font-semibold">{t.description}</td>
+                     <td className="px-6 py-4">
+                       <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${t.type === 'entrada' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                         {t.type}
+                       </span>
+                     </td>
+                     <td className="px-6 py-4 text-xs text-slate-500">{t.paymentMethod}</td>
+                     <td className={`px-6 py-4 text-right font-bold text-sm ${t.type === 'entrada' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                       {t.type === 'entrada' ? '+' : '-'} R$ {t.value.toFixed(2)}
+                     </td>
+                   </tr>
+                 ))}
+               </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

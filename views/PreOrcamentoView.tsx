@@ -1,39 +1,18 @@
-
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Calculator, 
-  Truck, 
-  Package, 
-  DollarSign, 
-  Search, 
-  Smartphone,
-  CheckCircle2,
   Plus,
   X,
-  Share2,
   Trash2,
-  RefreshCcw
+  RefreshCcw,
+  Loader2
 } from 'lucide-react';
-
-interface CatalogItem {
-  brand: string;
-  model: string;
-  char: string;
-  master: number;
-  import: number;
-  premium: number;
-  pro: number;
-}
-
-const INITIAL_CATALOG: CatalogItem[] = [
-  { brand: 'APPLE', model: 'iPhone 13', char: 'Original Recond', master: 450, import: 550, premium: 650, pro: 850 },
-  { brand: 'SAMSUNG', model: 'Galaxy S22', char: 'Com Aro', master: 580, import: 720, premium: 850, pro: 1100 },
-  { brand: 'MOTOROLA', model: 'Moto G52', char: 'Premium', master: 180, import: 220, premium: 280, pro: 350 },
-  { brand: 'XIAOMI', model: 'Redmi Note 11', char: 'Original China', master: 250, import: 300, premium: 380, pro: 450 },
-];
+import { api } from '../services/api';
+import { CatalogItem } from '../types';
 
 const PreOrcamentoView: React.FC = () => {
-  const [catalog, setCatalog] = useState<CatalogItem[]>(INITIAL_CATALOG);
+  const [catalog, setCatalog] = useState<CatalogItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBrand, setSelectedBrand] = useState('TODOS');
   const [isAddingNew, setIsAddingNew] = useState(false);
@@ -45,11 +24,27 @@ const PreOrcamentoView: React.FC = () => {
     laborValue: 0,
   });
 
-  const [newModel, setNewModel] = useState<CatalogItem>({ 
+  const [newModel, setNewModel] = useState<Omit<CatalogItem, 'id'>>({ 
     brand: 'APPLE', model: '', char: '', master: 0, import: 0, premium: 0, pro: 0 
   });
 
   const brands = ['TODOS', 'APPLE', 'SAMSUNG', 'MOTOROLA', 'XIAOMI', 'LG', 'ASUS', 'OUTROS'];
+
+  useEffect(() => {
+    loadCatalog();
+  }, []);
+
+  const loadCatalog = async () => {
+    setIsLoading(true);
+    try {
+      const data = await api.getCatalog();
+      setCatalog(data);
+    } catch (error) {
+      console.error('Erro ao carregar catálogo:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const filteredCatalog = useMemo(() => {
     return catalog.filter(item => {
@@ -72,12 +67,19 @@ const PreOrcamentoView: React.FC = () => {
     }));
   };
 
-  const handleSaveNewModel = (e: React.FormEvent) => {
+  const handleSaveNewModel = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newModel.model) return;
-    setCatalog([newModel, ...catalog]);
-    setIsAddingNew(false);
-    setNewModel({ brand: 'APPLE', model: '', char: '', master: 0, import: 0, premium: 0, pro: 0 });
+    
+    try {
+      await api.saveCatalogItem(newModel);
+      setIsAddingNew(false);
+      setNewModel({ brand: 'APPLE', model: '', char: '', master: 0, import: 0, premium: 0, pro: 0 });
+      loadCatalog();
+    } catch (error) {
+      console.error('Erro ao salvar item:', error);
+      alert('Erro ao salvar item no catálogo.');
+    }
   };
 
   const clearCalculator = () => {
@@ -89,11 +91,15 @@ const PreOrcamentoView: React.FC = () => {
     });
   };
 
-  const removeModel = (index: number) => {
+  const removeModel = async (id: string) => {
     if(!confirm("Deseja remover este item do catálogo?")) return;
-    const newCat = [...catalog];
-    newCat.splice(index, 1);
-    setCatalog(newCat);
+    try {
+      await api.deleteCatalogItem(id);
+      loadCatalog();
+    } catch (error) {
+      console.error('Erro ao remover item:', error);
+      alert('Erro ao remover item do catálogo.');
+    }
   };
 
   return (
@@ -161,39 +167,50 @@ const PreOrcamentoView: React.FC = () => {
           </div>
 
           <div className="overflow-x-auto rounded-3xl border border-slate-50">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b">
-                  <th className="px-6 py-4">Aparelho</th>
-                  <th className="px-2 py-4 text-center">Incell/M</th>
-                  <th className="px-2 py-4 text-center">Premium</th>
-                  <th className="px-2 py-4 text-center">Orig.</th>
-                  <th className="px-4 py-4"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {filteredCatalog.map((item, idx) => (
-                  <tr key={idx} className="hover:bg-blue-50/30 transition-all group">
-                    <td className="px-6 py-5">
-                      <div className="font-black text-slate-800 text-sm">{item.model}</div>
-                      <div className="text-[10px] text-slate-400 font-bold uppercase">{item.brand} • {item.char}</div>
-                    </td>
-                    <td className="px-2 py-5">
-                       <button onClick={() => handleSelectPrice(item.master, item)} className="w-full py-2 bg-slate-50 border border-slate-200 rounded-lg font-black text-[10px] hover:bg-slate-900 hover:text-white transition-all">R$ {item.master}</button>
-                    </td>
-                    <td className="px-2 py-5">
-                       <button onClick={() => handleSelectPrice(item.premium, item)} className="w-full py-2 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg font-black text-[10px] hover:bg-amber-600 hover:text-white transition-all">R$ {item.premium}</button>
-                    </td>
-                    <td className="px-2 py-5">
-                       <button onClick={() => handleSelectPrice(item.pro, item)} className="w-full py-2 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg font-black text-[10px] hover:bg-blue-600 hover:text-white transition-all">R$ {item.pro}</button>
-                    </td>
-                    <td className="px-4 py-5 text-right">
-                       <button onClick={() => removeModel(idx)} className="p-2 text-slate-200 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={16}/></button>
-                    </td>
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center py-20 gap-4">
+                <Loader2 className="animate-spin text-blue-600" size={40} />
+                <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Carregando Catálogo...</p>
+              </div>
+            ) : filteredCatalog.length === 0 ? (
+              <div className="py-20 text-center">
+                <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Nenhum item encontrado</p>
+              </div>
+            ) : (
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b">
+                    <th className="px-6 py-4">Aparelho</th>
+                    <th className="px-2 py-4 text-center">Incell/M</th>
+                    <th className="px-2 py-4 text-center">Premium</th>
+                    <th className="px-2 py-4 text-center">Orig.</th>
+                    <th className="px-4 py-4"></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {filteredCatalog.map((item) => (
+                    <tr key={item.id} className="hover:bg-blue-50/30 transition-all group">
+                      <td className="px-6 py-5">
+                        <div className="font-black text-slate-800 text-sm">{item.model}</div>
+                        <div className="text-[10px] text-slate-400 font-bold uppercase">{item.brand} • {item.char}</div>
+                      </td>
+                      <td className="px-2 py-5">
+                         <button onClick={() => handleSelectPrice(item.master, item)} className="w-full py-2 bg-slate-50 border border-slate-200 rounded-lg font-black text-[10px] hover:bg-slate-900 hover:text-white transition-all">R$ {item.master}</button>
+                      </td>
+                      <td className="px-2 py-5">
+                         <button onClick={() => handleSelectPrice(item.premium, item)} className="w-full py-2 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg font-black text-[10px] hover:bg-amber-600 hover:text-white transition-all">R$ {item.premium}</button>
+                      </td>
+                      <td className="px-2 py-5">
+                         <button onClick={() => handleSelectPrice(item.pro, item)} className="w-full py-2 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg font-black text-[10px] hover:bg-blue-600 hover:text-white transition-all">R$ {item.pro}</button>
+                      </td>
+                      <td className="px-4 py-5 text-right">
+                         <button onClick={() => removeModel(item.id)} className="p-2 text-slate-200 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={16}/></button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
 

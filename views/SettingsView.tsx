@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
-import { Camera, Save, Building2, Phone, MapPin, Hash, Trash2 } from 'lucide-react';
+import { Image, Save, Building2, Phone, MapPin, Hash, Trash2 } from 'lucide-react';
 
 const SettingsView: React.FC = () => {
   const [config, setConfig] = useState({
     logo: '',
-    name: 'PAINEL DA ASIM',
+    name: 'PAINELCELL',
     cnpj: '00.000.000/0001-00',
     phone: '(00) 00000-0000',
     address: 'Rua Principal da Assistência, 100',
@@ -60,11 +60,11 @@ const SettingsView: React.FC = () => {
                 {config.logo ? (
                   <img src={config.logo} alt="Logo Preview" className="w-full h-full object-contain p-4" />
                 ) : (
-                  <Camera size={40} className="text-slate-300 group-hover:text-blue-400 transition-colors" />
+                  <Image size={40} className="text-slate-300 group-hover:text-blue-400 transition-colors" />
                 )}
               </div>
               <label className="absolute -bottom-2 -right-2 bg-blue-600 text-white p-3 rounded-2xl shadow-lg cursor-pointer hover:bg-blue-700 transition-all active:scale-90">
-                <Camera size={20} />
+                <Image size={20} />
                 <input type="file" className="hidden" accept="image/*" onChange={handleLogoUpload} />
               </label>
             </div>

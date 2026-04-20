@@ -1,0 +1,74 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "System user with role and commission info",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "username": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["ADMIN", "USER"] },
+        "commissionRate": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "username", "name", "role", "commissionRate", "createdAt"]
+    },
+    "Client": {
+      "title": "Client",
+      "description": "Customer information",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "cpfCnpj": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "phone", "createdAt"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Inventory item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "costPrice": { "type": "number" },
+        "salePrice": { "type": "number" },
+        "quantity": { "type": "number" },
+        "minQuantity": { "type": "number" },
+        "active": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "category", "costPrice", "salePrice", "quantity", "minQuantity", "active", "createdAt"]
+    },
+    "ServiceOrder": {
+      "title": "Service Order",
+      "description": "Technical service record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "osNumber": { "type": "string" },
+        "type": { "type": "string" },
+        "clientId": { "type": "string" },
+        "clientName": { "type": "string" },
+        "responsibleId": { "type": "string" },
+        "responsibleName": { "type": "string" },
+        "problemReported": { "type": "string" },
+        "status": { "type": "string" },
+        "openedAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "osNumber", "type", "clientId", "clientName", "responsibleId", "responsibleName", "problemReported", "status", "openedAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": { "schema": "User", "description": "User profiles" },
+    "/clients/{clientId}": { "schema": "Client", "description": "Client records" },
+    "/products/{productId}": { "schema": "Product", "description": "Inventory items" },
+    "/service_orders/{osId}": { "schema": "ServiceOrder", "description": "Service orders" }
+  }
+}
