@@ -22,12 +22,13 @@ const CashReportView: React.FC<CashReportViewProps> = ({ transactions, onBack })
   }, [dateRange, transactions]);
 
   const stats = useMemo(() => {
-    const entradas = filteredData.filter(t => t.type === 'entrada').reduce((acc, t) => acc + t.val, 0);
-    const saidas = filteredData.filter(t => t.type === 'saida').reduce((acc, t) => acc + t.val, 0);
+    const entradas = filteredData.filter(t => t.type === 'entrada').reduce((acc, t) => acc + (t.value || 0), 0);
+    const saidas = filteredData.filter(t => t.type === 'saida').reduce((acc, t) => acc + (t.value || 0), 0);
     
     const byMethod: Record<string, number> = {};
     filteredData.filter(t => t.type === 'entrada').forEach(t => {
-      byMethod[t.method] = (byMethod[t.method] || 0) + t.val;
+      const method = t.paymentMethod || 'Outro';
+      byMethod[method] = (byMethod[method] || 0) + (t.value || 0);
     });
 
     return { totalEntradas: entradas, totalSaidas: saidas, saldo: entradas - saidas, byMethod };
@@ -247,13 +248,13 @@ const CashReportView: React.FC<CashReportViewProps> = ({ transactions, onBack })
                       {new Date(t.date).toLocaleDateString('pt-BR')}
                     </td>
                     <td className="px-4 py-4">
-                      <p className="text-sm font-black text-slate-800 tracking-tight">{t.desc}</p>
+                      <p className="text-sm font-black text-slate-800 tracking-tight">{t.description}</p>
                     </td>
                     <td className="px-4 py-4">
-                      <span className="text-[10px] font-bold text-slate-500 border border-slate-100 px-2 py-0.5 rounded-lg">{t.method}</span>
+                      <span className="text-[10px] font-bold text-slate-500 border border-slate-100 px-2 py-0.5 rounded-lg">{t.paymentMethod || '---'}</span>
                     </td>
                     <td className={`px-8 py-4 text-right font-black text-sm ${t.type === 'entrada' ? 'text-emerald-600' : 'text-rose-500'}`}>
-                      {t.type === 'entrada' ? '+' : '-'} R$ {t.val.toFixed(2)}
+                      {t.type === 'entrada' ? '+' : '-'} R$ {(t.value || 0).toFixed(2)}
                     </td>
                   </tr>
                 ))}

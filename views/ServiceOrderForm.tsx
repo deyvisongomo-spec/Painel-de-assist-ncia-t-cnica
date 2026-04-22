@@ -45,6 +45,8 @@ const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({ onBack, onSave, ini
     color: '',
     capacity: '',
     imei: '',
+    hasImei: true,
+    imeiReason: '',
     password: '',
     itemsLeft: '',
     problemReported: '',
@@ -78,13 +80,17 @@ const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({ onBack, onSave, ini
     loadData();
 
     if (initialData) {
+      const isLegacySemImei = initialData.device?.imei?.toLowerCase().includes('sem imei') || false;
+      
       setFormData({
         ...initialData,
         model: initialData.device?.model || '',
         brand: initialData.device?.brand || 'Samsung',
         color: initialData.device?.color || '',
         capacity: initialData.device?.capacity || '',
-        imei: initialData.device?.imei || '',
+        imei: isLegacySemImei ? '' : (initialData.device?.imei || ''),
+        hasImei: initialData.device?.hasImei !== undefined ? initialData.device.hasImei : !isLegacySemImei,
+        imeiReason: initialData.device?.imeiReason || (isLegacySemImei ? initialData.device.imei : ''),
         password: initialData.device?.password || '',
         itemsLeft: Array.isArray(initialData.device?.itemsLeft) ? initialData.device.itemsLeft.join(', ') : (initialData.device?.itemsLeft || ''),
         problemReported: initialData.problemReported || '',
@@ -210,7 +216,7 @@ const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({ onBack, onSave, ini
               onClick={handleWhatsAppNotify} 
               className="flex items-center justify-center gap-2 bg-green-500 text-white px-4 py-2.5 rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-green-200 hover:bg-green-600 transition-all col-span-2 md:col-span-1"
             >
-              <MessageCircle size={16}/> Notificar Info
+              <MessageCircle size={16}/> Enviar p/ WhatsApp
             </button>
           )}
           <button onClick={() => handlePrint('a4')} className="flex items-center justify-center gap-2 bg-white border-2 border-slate-900 px-4 py-2.5 rounded-2xl font-black text-[10px] uppercase hover:bg-slate-900 hover:text-white transition-all"><FileText size={16}/> A4</button>
@@ -283,9 +289,27 @@ const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({ onBack, onSave, ini
                   <input type="text" value={formData.capacity} onChange={e => setFormData({...formData, capacity: e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ex: 128GB" />
                 </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">IMEI ou SN</label>
-                <input required type="text" value={formData.imei} onChange={e => setFormData({...formData, imei: e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Número Identificador Único" />
+              <div className="space-y-4 bg-slate-50 border border-slate-200 p-4 rounded-2xl relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-[10px] font-black text-slate-800 uppercase tracking-widest ml-1">É possível verificar o IMEI/SN?</label>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" className="sr-only peer" checked={formData.hasImei} onChange={(e) => setFormData({...formData, hasImei: e.target.checked, imeiReason: e.target.checked ? '' : formData.imeiReason, imei: e.target.checked ? '' : formData.imei})} />
+                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+                
+                {formData.hasImei ? (
+                  <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">IMEI ou SN</label>
+                    <input required type="text" value={formData.imei} onChange={e => setFormData({...formData, imei: e.target.value})} className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-bold focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Número Identificador Único" />
+                  </div>
+                ) : (
+                  <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
+                    <label className="text-[10px] font-black text-rose-500 uppercase tracking-widest ml-1">Motivo da Não Verificação</label>
+                    <input required type="text" value={formData.imeiReason} onChange={e => setFormData({...formData, imeiReason: e.target.value})} className="w-full p-4 bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl font-bold focus:ring-2 focus:ring-rose-500 outline-none placeholder:text-rose-300" placeholder="Ex: Tela totalmente inoperante, Placa morta..." />
+                  </div>
+                )}
               </div>
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Senha do Aparelho</label>

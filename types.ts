@@ -95,6 +95,8 @@ export interface ServiceOrder {
     color: string;
     capacity: string;
     imei: string;
+    hasImei?: boolean;
+    imeiReason?: string;
     password?: string;
     itemsLeft: string[];
   };

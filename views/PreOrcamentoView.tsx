@@ -224,7 +224,7 @@ const PreOrcamentoView: React.FC = () => {
             <div className="space-y-6">
                <div>
                   <label className="text-[9px] font-black uppercase text-slate-500 block mb-2">Aparelho</label>
-                  <input type="text" value={data.device} className="w-full bg-white/5 border border-white/10 p-3 rounded-xl font-bold text-sm outline-none" placeholder="..." />
+                  <input type="text" value={data.device} readOnly className="w-full bg-white/5 border border-white/10 p-3 rounded-xl font-bold text-sm outline-none cursor-default" placeholder="..." />
                </div>
                <div className="grid grid-cols-2 gap-4">
                   <div>

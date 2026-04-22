@@ -75,23 +75,14 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isAuthReady, setIsAuthReady] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isCreatingOS, setIsCreatingOS] = useState(false);
   const [selectedOS, setSelectedOS] = useState<any>(null);
   const [isPrintingOS, setIsPrintingOS] = useState(false);
 
   useEffect(() => {
-    // Tenta carregar do LocalStorage primeiro para velocidade (opcional)
-    const saved = localStorage.getItem('asim_session');
-    if (saved) {
-      try {
-        setCurrentUser(JSON.parse(saved));
-      } catch (e) {
-        localStorage.removeItem('asim_session');
-      }
-    }
-
-    // Verifica o estado real no Firebase
+    // Verifica o estado real no Firebase e só libera o app quando o Auth SDK estiver inicializado
     api.getCurrentUser().then(user => {
       if (user) {
         setCurrentUser(user);
@@ -100,6 +91,7 @@ const App: React.FC = () => {
         setCurrentUser(null);
         localStorage.removeItem('asim_session');
       }
+      setIsAuthReady(true);
     });
   }, []);
 
@@ -139,7 +131,7 @@ const App: React.FC = () => {
   const handleSaveOS = async (data: any) => {
     console.log('App: handleSaveOS chamado com dados:', data);
     try {
-      const { model, brand, color, capacity, imei, password, itemsLeft, ...rest } = data;
+      const { model, brand, color, capacity, imei, hasImei, imeiReason, password, itemsLeft, ...rest } = data;
       
       const osData = {
         ...rest,
@@ -148,7 +140,9 @@ const App: React.FC = () => {
           brand,
           color,
           capacity,
-          imei,
+          imei: hasImei ? imei : '',
+          hasImei: hasImei !== false, // default true
+          imeiReason: !hasImei ? imeiReason : '',
           password,
           itemsLeft: typeof itemsLeft === 'string' ? itemsLeft.split(',').map((s: string) => s.trim()).filter(Boolean) : itemsLeft
         },
@@ -177,6 +171,17 @@ const App: React.FC = () => {
       alert('Erro ao salvar Ordem de Serviço.');
     }
   };
+
+  if (!isAuthReady) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="w-12 h-12 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mx-auto"></div>
+          <p className="text-blue-500 font-bold uppercase tracking-widest text-xs">Carregando Sistema...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!currentUser) {
     return <LoginView onLogin={handleLogin} />;

@@ -90,20 +90,27 @@ export const OSPrintLayouts: React.FC<OSPrintLayoutsProps> = ({
         
         {/* VIEW TÉRMICA (80mm) - ESTILO IMAGEM DO USUÁRIO */}
         <div className="thermal-layout">
-          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'start', fontSize: '10pt', borderBottom: '2px solid #000', paddingBottom: '8px'}}>
-            <div style={{width: '65%'}}>
-              <h2 style={{fontWeight: '900', fontSize: '15pt', margin: '0 0 5px 0'}}>{config.name}</h2>
-              <p style={{margin: '0 0 3px 0', fontSize: '10pt', fontWeight: 'bold'}}>{config.cnpj}</p>
-              <p style={{margin: '0 0 3px 0', fontSize: '10pt', fontWeight: 'bold'}}>{config.address}</p>
-              <p style={{margin: '0 0 3px 0', fontSize: '10pt', fontWeight: 'bold'}}>✉ {config.email}</p>
-              <p style={{margin: '0 0 3px 0', fontSize: '11pt', fontWeight: 'bold'}}>📞 Fone: (31) 2028-1027</p>
-              <p style={{margin: '0 0 3px 0', fontSize: '11pt', fontWeight: 'bold'}}>📱 Whatsapp: (31) 99554-9149</p>
-              <p style={{margin: '0', fontSize: '10pt', fontWeight: 'bold'}}>👤 Resp: {config.responsible}</p>
+          <div style={{fontSize: '10pt', paddingBottom: '10px', textAlign: 'center'}}>
+            <h2 style={{fontWeight: '900', fontSize: '15pt', margin: '0 0 5px 0'}}>{config.name}</h2>
+            <p style={{margin: '0 0 3px 0', fontSize: '10pt', fontWeight: 'bold'}}>{config.cnpj}</p>
+            <p style={{margin: '0 0 3px 0', fontSize: '10pt', fontWeight: 'bold'}}>{config.address}</p>
+            <p style={{margin: '0 0 3px 0', fontSize: '10pt', fontWeight: 'bold'}}>✉ {config.email}</p>
+            <p style={{margin: '0 0 3px 0', fontSize: '11pt', fontWeight: 'bold'}}>📞 Fone: (31) 2028-1027 &nbsp; 📱 Whats: (31) 99554-9149</p>
+            <p style={{margin: '0', fontSize: '10pt', fontWeight: 'bold'}}>👤 Resp: {config.responsible || '---'}</p>
+          </div>
+
+          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '2px dashed #000', borderBottom: '2px solid #000', padding: '8px 0', marginBottom: '10px'}}>
+            <div style={{textAlign: 'center'}}>
+              <p style={{margin: '0 0 2px 0', fontSize: '11pt'}}><b>Nº OS</b></p>
+              <p style={{margin: '0', fontSize: '12pt', fontWeight: '900'}}>{initialData?.osNumber || 'NOVA'}</p>
             </div>
-            <div style={{width: '35%', textAlign: 'right'}}>
-              <p style={{margin: '0 0 6px 0', fontSize: '12pt'}}><b>Nº OS:</b><br/>{initialData?.osNumber || 'NOVA'}</p>
-              <p style={{margin: '0 0 6px 0', fontSize: '9pt'}}><b>Criação:</b><br/>{initialData?.openedAt ? new Date(initialData.openedAt).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR')}<br/>{initialData?.openedAt ? new Date(initialData.openedAt).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}) : new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}</p>
-              <p style={{margin: '0', fontSize: '9pt'}}><b>Emissão:</b><br/>{new Date().toLocaleDateString('pt-BR')}<br/>{new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}</p>
+            <div style={{textAlign: 'center'}}>
+              <p style={{margin: '0 0 2px 0', fontSize: '9pt'}}><b>Criação</b></p>
+              <p style={{margin: '0', fontSize: '9pt', fontWeight: 'bold'}}>{initialData?.openedAt ? new Date(initialData.openedAt).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR')}<br/>{initialData?.openedAt ? new Date(initialData.openedAt).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}) : new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}</p>
+            </div>
+            <div style={{textAlign: 'center'}}>
+              <p style={{margin: '0 0 2px 0', fontSize: '9pt'}}><b>Emissão</b></p>
+              <p style={{margin: '0', fontSize: '9pt', fontWeight: 'bold'}}>{new Date().toLocaleDateString('pt-BR')}<br/>{new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}</p>
             </div>
           </div>
 
@@ -135,9 +142,10 @@ export const OSPrintLayouts: React.FC<OSPrintLayoutsProps> = ({
           </table>
 
           <div style={{marginTop: '12px', borderTop: '2px solid #000', paddingTop: '8px'}}>
-            <p style={{margin: '0', fontSize: '13pt', fontWeight: '900'}}>APARELHO: {formData.brand} {formData.model}</p>
+            <p style={{margin: '0', fontSize: '13pt', fontWeight: '900'}}>DISPOSITIVO: {formData.model}</p>
             <div style={{display: 'flex', flexWrap: 'wrap', gap: '0 10px', marginTop: '4px'}}>
-              {formData.imei && <p style={{margin: '0', fontSize: '10pt', fontWeight: 'bold'}}>IMEI: {formData.imei}</p>}
+              {(formData.hasImei !== false && formData.imei) && <p style={{margin: '0', fontSize: '10pt', fontWeight: 'bold'}}>IMEI: {formData.imei}</p>}
+              {(formData.hasImei === false && formData.imeiReason) && <p style={{margin: '0', fontSize: '10pt', fontWeight: 'bold'}}>IMEI N/A: {formData.imeiReason}</p>}
               {formData.color && <p style={{margin: '0', fontSize: '10pt', fontWeight: 'bold'}}>COR: {formData.color}</p>}
             </div>
           </div>
@@ -241,12 +249,17 @@ export const OSPrintLayouts: React.FC<OSPrintLayoutsProps> = ({
 
             <div className="info-box">
               <p className="section-title" style={{marginTop: 0}}>Dados do Equipamento</p>
-              <span className="info-label">Aparelho / Modelo</span>
-              <p className="info-value">{formData.brand} {formData.model || '---'}</p>
+              <span className="info-label">Dispositivo</span>
+              <p className="info-value">{formData.model || '---'}</p>
               <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '10px'}}>
                 <div>
-                  <span className="info-label">IMEI / Serial</span>
-                  <p className="info-value" style={{fontSize: '10pt'}}>{formData.imei || '---'}</p>
+                  <span className="info-label">IMEI / Serial / Motivo Inválido</span>
+                  <p className="info-value" style={{fontSize: '10pt'}}>
+                    {formData.hasImei === false ? 
+                      (`NÃO AVALIADO: ${formData.imeiReason || 'Sem motivo detalhado'}`) : 
+                      (formData.imei || '---')
+                    }
+                  </p>
                 </div>
                 <div>
                   <span className="info-label">Cor / Cap.</span>
