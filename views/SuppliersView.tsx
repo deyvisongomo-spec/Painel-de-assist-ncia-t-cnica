@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 import { Supplier } from '../types';
+import { formatPhone } from '../src/lib/utils';
 
 const SuppliersView: React.FC = () => {
   const [activeSubTab, setActiveSubTab] = useState<'list' | 'suggestions'>('list');
@@ -127,13 +128,13 @@ const SuppliersView: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1">Telefone (Somente números com DDD)</label>
+                  <label className="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1">Telefone / WhatsApp</label>
                   <input 
                     type="text" 
                     className="w-full p-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none shadow-sm font-semibold" 
-                    placeholder="5511999999999"
+                    placeholder="(00) 00000-0000"
                     value={formData.phone}
-                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                    onChange={(e) => setFormData({...formData, phone: formatPhone(e.target.value)})}
                   />
                 </div>
                 <div>
@@ -199,20 +200,20 @@ const SuppliersView: React.FC = () => {
         </div>
         
         {activeSubTab === 'list' && (
-          <div className="flex items-center gap-4 w-full md:w-auto">
-            <div className="relative flex-1 md:w-64">
+          <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
+            <div className="relative flex-1 w-full md:w-64">
               <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input 
                 type="text" 
                 placeholder="Buscar fornecedor..." 
-                className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm shadow-sm font-semibold"
+                className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm shadow-sm font-semibold"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
             <button 
               onClick={() => setIsFormOpen(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 rounded-xl font-black flex items-center gap-3 transition-all shadow-xl shadow-blue-200 uppercase tracking-widest active:scale-95 text-xs"
+              className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-black flex items-center justify-center gap-3 transition-all shadow-xl shadow-blue-200 uppercase tracking-widest active:scale-95 text-xs"
             >
               <Plus size={20} />
               Novo Fornecedor

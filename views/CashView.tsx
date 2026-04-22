@@ -3,9 +3,13 @@ import React, { useState, useEffect } from 'react';
 import { DollarSign, ArrowUpCircle, ArrowDownCircle, ShoppingCart, Plus, Search, Trash2, FileText, Calendar, X, Save, Loader2 } from 'lucide-react';
 import CashReportView from './CashReportView';
 import { api } from '../services/api';
-import { CashTransaction } from '../types';
+import { CashTransaction, User } from '../types';
 
-const CashView: React.FC = () => {
+interface CashViewProps {
+  currentUser: User | null;
+}
+
+const CashView: React.FC<CashViewProps> = ({ currentUser }) => {
   const [isQuickSale, setIsQuickSale] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -242,24 +246,24 @@ const CashView: React.FC = () => {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Fluxo Financeiro</h2>
           <p className="text-slate-500">Gerencie entradas, saídas e relatórios de fechamento.</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col sm:flex-row w-full md:w-auto flex-wrap gap-2">
            <button 
              onClick={() => setShowReport(true)}
-             className="flex items-center gap-2 bg-slate-100 text-slate-700 hover:bg-slate-200 px-6 py-2 rounded-xl font-bold transition-all"
+             className="flex-1 flex justify-center items-center gap-2 bg-slate-100 text-slate-700 hover:bg-slate-200 px-6 py-3 rounded-xl font-bold transition-all"
            >
              <FileText size={18} /> Fechamento de Caixa
            </button>
-           <button onClick={() => setIsQuickSale(true)} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-xl font-bold shadow-lg shadow-emerald-100">
+           <button onClick={() => setIsQuickSale(true)} className="flex-1 flex justify-center items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-emerald-100">
              <ShoppingCart size={18} /> Venda Rápida
            </button>
            <button 
              onClick={() => setIsFormOpen(true)}
-             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl font-bold"
+             className="flex-1 flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-blue-200"
            >
              <Plus size={18} /> Nova Movimentação
            </button>
@@ -306,13 +310,14 @@ const CashView: React.FC = () => {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left">
-               <thead className="bg-slate-50 text-[10px] font-bold uppercase text-slate-500 border-b">
+              <thead className="bg-slate-50 text-[10px] font-bold uppercase text-slate-500 border-b">
                  <tr>
                    <th className="px-6 py-4">Data/Hora</th>
                    <th className="px-6 py-4">Descrição</th>
                    <th className="px-6 py-4">Tipo</th>
                    <th className="px-6 py-4">Pagamento</th>
                    <th className="px-6 py-4 text-right">Valor</th>
+                   {currentUser?.role === 'ADMIN' && <th className="px-6 py-4 text-center">Ações</th>}
                  </tr>
                </thead>
                <tbody className="divide-y divide-slate-100">
@@ -331,6 +336,21 @@ const CashView: React.FC = () => {
                      <td className={`px-6 py-4 text-right font-bold text-sm ${t.type === 'entrada' ? 'text-emerald-600' : 'text-rose-600'}`}>
                        {t.type === 'entrada' ? '+' : '-'} R$ {t.value.toFixed(2)}
                      </td>
+                     {currentUser?.role === 'ADMIN' && (
+                       <td className="px-6 py-4 text-center">
+                         <button 
+                           onClick={async () => {
+                             if(confirm('Tem certeza que deseja excluir esta transação?')) {
+                               await api.deleteTransaction(t.id);
+                               loadTransactions();
+                             }
+                           }}
+                           className="text-rose-500 hover:text-rose-700"
+                         >
+                           <Trash2 size={16} />
+                         </button>
+                       </td>
+                     )}
                    </tr>
                  ))}
                </tbody>

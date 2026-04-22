@@ -59,45 +59,47 @@ const CommissionsView: React.FC = () => {
       </div>
 
       <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
-        <table className="w-full text-left">
-          <thead>
-            <tr className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b">
-              <th className="px-8 py-6">Colaborador</th>
-              <th className="px-6 py-6 text-center">Qtd. OS</th>
-              <th className="px-6 py-6 text-right">Mão de Obra (R$)</th>
-              <th className="px-6 py-6 text-right">Faturamento Total</th>
-              <th className="px-8 py-6 text-right">Comissão Devida</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50">
-            {reports.map((r) => (
-              <tr key={r.userId} className="hover:bg-slate-50/50 transition-colors group">
-                <td className="px-8 py-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-500 font-black">
-                      {r.userName?.charAt(0) || '?'}
-                    </div>
-                    <span className="text-sm font-black text-slate-700">{r.userName || 'Sem Nome'}</span>
-                  </div>
-                </td>
-                <td className="px-6 py-6 text-center">
-                  <span className="text-sm font-bold text-slate-600">{r.osCount}</span>
-                </td>
-                <td className="px-6 py-6 text-right">
-                  <span className="text-sm font-bold text-slate-600">R$ {r.totalServices.toFixed(2)}</span>
-                </td>
-                <td className="px-6 py-6 text-right">
-                   <span className="text-[10px] font-black text-slate-400">R$ {r.totalValue.toFixed(2)}</span>
-                </td>
-                <td className="px-8 py-6 text-right">
-                  <span className="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl font-black text-sm">
-                    R$ {r.commissionValue.toFixed(2)}
-                  </span>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b">
+                <th className="px-8 py-6">Colaborador</th>
+                <th className="px-6 py-6 text-center">Qtd. OS</th>
+                <th className="px-6 py-6 text-right">Mão de Obra (R$)</th>
+                <th className="px-6 py-6 text-right">Faturamento Total</th>
+                <th className="px-8 py-6 text-right">Comissão Devida</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {reports.map((r) => (
+                <tr key={r.userId} className="hover:bg-slate-50/50 transition-colors group">
+                  <td className="px-8 py-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-500 font-black">
+                        {r.userName?.charAt(0) || '?'}
+                      </div>
+                      <span className="text-sm font-black text-slate-700">{r.userName || 'Sem Nome'}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-6 text-center">
+                    <span className="text-sm font-bold text-slate-600">{r.osCount}</span>
+                  </td>
+                  <td className="px-6 py-6 text-right">
+                    <span className="text-sm font-bold text-slate-600">R$ {r.totalServices.toFixed(2)}</span>
+                  </td>
+                  <td className="px-6 py-6 text-right">
+                     <span className="text-[10px] font-black text-slate-400">R$ {r.totalValue.toFixed(2)}</span>
+                  </td>
+                  <td className="px-8 py-6 text-right">
+                    <span className="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl font-black text-sm">
+                      R$ {r.commissionValue.toFixed(2)}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

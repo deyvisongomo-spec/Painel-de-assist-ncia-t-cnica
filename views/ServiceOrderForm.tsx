@@ -139,10 +139,10 @@ const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({ onBack, onSave, ini
     let msg = `Olá *${formData.clientName}*! 👋\n\n`;
     msg += `Passando para dar atualizações sobre o seu aparelho: *${formData.brand} ${formData.model}*.\n`;
     
-    if (formData.status === OSStatus.PRONTO_AVISAR) {
+    if (formData.status === OSStatus.PRONTO_RETIRADA) {
       msg += `🎉 *Ótimas notícias! O aparelho já está PRONTO para retirada.*\n\nO valor do serviço ficou em *R$ ${totalOS.toFixed(2)}*.\n`;
-    } else if (formData.status === OSStatus.ORÇAMENTO_PENDENTE) {
-      msg += `📋 Temos o orçamento pronto para o seu aparelho. O total previsto é de *R$ ${totalOS.toFixed(2)}*.\nPor favor, confirme se podemos seguir com o reparo.\n`;
+    } else if (formData.status === OSStatus.EM_ANALISE) {
+      msg += `📋 Temos o orçamento em análise/pronto para o seu aparelho. O total previsto é de *R$ ${totalOS.toFixed(2)}*.\nPor favor, confirme se podemos seguir com o reparo.\n`;
     } else {
       msg += `O status atual da sua OS (#${initialData?.osNumber || 'recém criada'}) é: *${formData.status}*.\n`;
     }

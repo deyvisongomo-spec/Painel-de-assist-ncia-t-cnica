@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Image, Save, Building2, Phone, MapPin, Hash, Trash2 } from 'lucide-react';
+import { formatPhone, formatCPFOrCNPJ } from '../src/lib/utils';
 
 const SettingsView: React.FC = () => {
   const [config, setConfig] = useState({
@@ -81,11 +82,11 @@ const SettingsView: React.FC = () => {
               </div>
               <div>
                 <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 text-xs">CNPJ / CPF</label>
-                <input type="text" value={config.cnpj} onChange={e => setConfig({...config, cnpj: e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold outline-none focus:ring-2 focus:ring-blue-500" />
+                <input type="text" value={config.cnpj} onChange={e => setConfig({...config, cnpj: formatCPFOrCNPJ(e.target.value)})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
                 <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 text-xs">WhatsApp Loja</label>
-                <input type="text" value={config.phone} onChange={e => setConfig({...config, phone: e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold outline-none focus:ring-2 focus:ring-blue-500" />
+                <input type="text" value={config.phone} onChange={e => setConfig({...config, phone: formatPhone(e.target.value)})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div className="sm:col-span-2">
                 <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 text-xs">Endereço</label>

@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Plus, UserCircle, Phone, MapPin, Edit, Trash2, X, Save, Loader2, Upload, FileText } from 'lucide-react';
-import { api } from '@/services/api';
-import { Client } from '@/types';
+import { api } from '../services/api';
+import { Client } from '../types';
 import Papa from 'papaparse';
+import { formatPhone, formatCPFOrCNPJ, formatCEP } from '../src/lib/utils';
 
 const ClientsView: React.FC = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -130,7 +131,8 @@ const ClientsView: React.FC = () => {
                email: String(email),
                secondaryPhone: '',
                address: { street: '', number: '', neighborhood: '', city: '', state: '', zipCode: '' },
-               notes: 'Importado via planilha CSV/Excel'
+               notes: 'Importado via planilha CSV/Excel',
+               createdAt: new Date().toISOString()
              });
              successCount++;
           }
@@ -236,7 +238,7 @@ const ClientsView: React.FC = () => {
                     className="w-full p-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none shadow-sm font-semibold" 
                     placeholder="000.000.000-00"
                     value={formData.cpfCnpj}
-                    onChange={(e) => setFormData({...formData, cpfCnpj: e.target.value})}
+                    onChange={(e) => setFormData({...formData, cpfCnpj: formatCPFOrCNPJ(e.target.value)})}
                   />
                 </div>
                 <div>
@@ -246,7 +248,7 @@ const ClientsView: React.FC = () => {
                     className="w-full p-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none shadow-sm font-semibold" 
                     placeholder="(00) 00000-0000"
                     value={formData.phone}
-                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                    onChange={(e) => setFormData({...formData, phone: formatPhone(e.target.value)})}
                   />
                 </div>
                 <div>
@@ -256,7 +258,7 @@ const ClientsView: React.FC = () => {
                     className="w-full p-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none shadow-sm font-semibold" 
                     placeholder="(00) 00000-0000"
                     value={formData.secondaryPhone}
-                    onChange={(e) => setFormData({...formData, secondaryPhone: e.target.value})}
+                    onChange={(e) => setFormData({...formData, secondaryPhone: formatPhone(e.target.value)})}
                   />
                 </div>
                 <div>
@@ -340,7 +342,7 @@ const ClientsView: React.FC = () => {
                     className="w-full p-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none shadow-sm font-semibold" 
                     placeholder="00000-000"
                     value={formData.address.zipCode}
-                    onChange={(e) => setFormData({...formData, address: {...formData.address, zipCode: e.target.value}})}
+                    onChange={(e) => setFormData({...formData, address: {...formData.address, zipCode: formatCEP(e.target.value)}})}
                   />
                 </div>
               </div>
@@ -392,14 +394,14 @@ const ClientsView: React.FC = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 w-full md:w-auto">
           <button 
             onClick={handleImportPDF}
             disabled={isImporting}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-4 rounded-xl flex items-center gap-2 transition-all shadow-md hover:shadow-lg disabled:opacity-50"
+            className="bg-emerald-600 w-full md:w-auto hover:bg-emerald-700 text-white px-4 py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg disabled:opacity-50"
             title="Importar Clientes de Planilha (CSV)"
           >
-            {isImporting ? <Loader2 size={24} className="animate-spin" /> : <FileText size={24} />}
+            {isImporting ? <Loader2 size={24} className="animate-spin" /> : <><FileText size={20} /> CSV</>}
           </button>
           
           <input 
@@ -412,7 +414,7 @@ const ClientsView: React.FC = () => {
 
           <button 
              onClick={() => setIsFormOpen(true)}
-             className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-2xl font-black flex items-center gap-3 transition-all shadow-xl shadow-blue-200 uppercase tracking-widest active:scale-95"
+             className="bg-blue-600 flex-1 hover:bg-blue-700 text-white px-8 py-4 rounded-2xl font-black flex items-center justify-center gap-3 transition-all shadow-xl shadow-blue-200 uppercase tracking-widest active:scale-95"
            >
              <Plus size={20} />
              Novo Cliente
@@ -450,7 +452,7 @@ const ClientsView: React.FC = () => {
                 <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 shadow-sm group-hover:scale-110 transition-all">
                   <UserCircle size={32} />
                 </div>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                <div className="flex gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all">
                   <button 
                     onClick={() => handleEdit(client)}
                     className="p-2.5 bg-white border border-slate-100 hover:border-blue-200 text-slate-600 rounded-xl shadow-sm hover:text-blue-600"
@@ -484,7 +486,19 @@ const ClientsView: React.FC = () => {
                 </div>
               </div>
               
-              <button className="w-full mt-8 py-3 bg-slate-50 text-slate-600 text-xs font-black uppercase tracking-widest rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-inner">
+              <button 
+                onClick={async () => {
+                  const orders = await api.getOS();
+                  const clientOrders = orders.filter(o => o.clientId === client.id);
+                  if (clientOrders.length > 0) {
+                    // Aqui você pode implementar a navegação para o histórico
+                    alert(`Este cliente possui ${clientOrders.length} ordens de serviço.`);
+                  } else {
+                    alert("Esse cliente não possui ordem de serviço");
+                  }
+                }}
+                className="w-full mt-8 py-3 bg-slate-50 text-slate-600 text-xs font-black uppercase tracking-widest rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-inner"
+              >
                 Ver Histórico de OS
               </button>
             </div>

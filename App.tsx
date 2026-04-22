@@ -227,7 +227,7 @@ const App: React.FC = () => {
         content = <InventoryView />;
         break;
       case 'caixa':
-        content = <CashView />;
+        content = <CashView currentUser={currentUser} />;
         break;
       case 'pre-orcamento':
         content = <PreOrcamentoView />;

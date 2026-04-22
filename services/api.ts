@@ -182,6 +182,15 @@ export const saveTransaction = async (transaction: Omit<CashTransaction, "id">):
   }
 };
 
+export const updateTransaction = async (id: string, updates: Partial<CashTransaction>): Promise<void> => {
+  const ref = doc(db, "transactions", id);
+  await updateDoc(ref, updates);
+};
+
+export const deleteTransaction = async (id: string): Promise<void> => {
+  await deleteDoc(doc(db, "transactions", id));
+};
+
 // --- CATÁLOGO DE PREÇOS ---
 export const getCatalog = async (): Promise<CatalogItem[]> => {
   try {
@@ -219,7 +228,6 @@ export const getReminders = async (): Promise<Reminder[]> => {
 };
 
 export const saveReminder = async (reminder: Omit<Reminder, "id">): Promise<Reminder> => {
-  if (!USE_FIREBASE) return addLS('reminders', reminder);
   try {
     const docRef = await withTimeout(addDoc(REMINDERS_COL, reminder));
     return { ...reminder, id: docRef.id } as Reminder;
@@ -386,6 +394,8 @@ export const api = {
   // Financeiro
   getTransactions: getTransactions,
   saveTransaction: saveTransaction,
+  updateTransaction: updateTransaction,
+  deleteTransaction: deleteTransaction,
 
   // Catálogo
   getCatalog: getCatalog,

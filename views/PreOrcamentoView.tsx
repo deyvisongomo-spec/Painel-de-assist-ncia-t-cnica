@@ -204,7 +204,7 @@ const PreOrcamentoView: React.FC = () => {
                          <button onClick={() => handleSelectPrice(item.pro, item)} className="w-full py-2 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg font-black text-[10px] hover:bg-blue-600 hover:text-white transition-all">R$ {item.pro}</button>
                       </td>
                       <td className="px-4 py-5 text-right">
-                         <button onClick={() => removeModel(item.id)} className="p-2 text-slate-200 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={16}/></button>
+                         <button onClick={() => removeModel(item.id)} className="p-2 text-slate-200 hover:text-rose-500 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all"><Trash2 size={16}/></button>
                       </td>
                     </tr>
                   ))}

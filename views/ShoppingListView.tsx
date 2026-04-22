@@ -202,7 +202,7 @@ const ShoppingListView: React.FC = () => {
                 </div>
                 <button 
                   onClick={() => handleDeleteReminder(r.id)}
-                  className="p-3 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-2xl transition-all opacity-0 group-hover:opacity-100"
+                  className="p-3 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-2xl transition-all opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
                 >
                   <Trash2 size={20} />
                 </button>
