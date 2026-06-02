@@ -127,8 +127,20 @@ service cloud.firestore {
     }
 
     match /activity_logs/{id} { allow read: if isAuthenticated(); allow create: if isAuthenticated(); allow update, delete: if isAdmin(); }
-    match /suppliers/{id} { allow read, write: if isAuthenticated(); }
-    match /transactions/{id} { allow read, write: if isAuthenticated(); }
+    
+    // Fornecedores: qualquer autenticado lê, apenas ADMIN escreve
+    match /suppliers/{id} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // Transações financeiras: qualquer autenticado lê e cria (caixa), apenas ADMIN edita e deleta
+    match /transactions/{id} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+    
     match /catalog/{id} { allow read, write: if isAuthenticated(); }
     match /reminders/{id} { allow read, write: if isAuthenticated(); }
   }

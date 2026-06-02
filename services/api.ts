@@ -98,10 +98,12 @@ export const saveProduct = async (product: Omit<Product, "id">): Promise<Product
 // --- ORDENS DE SERVIÇO (OS) ---
 export const getServiceOrders = async (limitCount: number = 300): Promise<ServiceOrder[]> => {
   try {
-    // Agora busca apenas as 300 últimas OS para evitar cobrança excessiva no Firebase e lentidão
     const q = query(OS_COL, orderBy("openedAt", "desc"), limit(limitCount));
     const snapshot = await withTimeout(getDocs(q));
-    return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as ServiceOrder));
+    return snapshot.docs
+      .map(doc => ({ ...doc.data(), id: doc.id } as ServiceOrder))
+      // Filtra OS com soft delete (deletedAt presente)
+      .filter(os => !(os as any).deletedAt);
   } catch (error) {
     console.error('Erro ao buscar OS no Firebase:', error);
     throw error;
@@ -112,14 +114,33 @@ export const saveServiceOrder = async (os: Omit<ServiceOrder, "id">): Promise<Se
   console.log('Iniciando salvamento de OS...', os);
   try {
     const counterRef = doc(db, 'metadata', 'osCounter');
-    const newOsNumber = await runTransaction(db, async (transaction) => {
+
+    // Usa uma única transação para: incrementar contador + deduzir peças do estoque
+    const { newOsNumber } = await runTransaction(db, async (transaction) => {
+      // 1. Incrementa contador de OS
       const counterDoc = await transaction.get(counterRef);
       let currentNumber = 1;
       if (counterDoc.exists() && counterDoc.data().current) {
         currentNumber = counterDoc.data().current + 1;
       }
       transaction.set(counterRef, { current: currentNumber }, { merge: true });
-      return currentNumber;
+
+      // 2. Deduz peças do estoque (apenas para OS nova, não edição)
+      const parts = (os as any).parts as { id: string; quantity: number }[] | undefined;
+      if (parts && parts.length > 0) {
+        for (const part of parts) {
+          if (!part.id) continue;
+          const productRef = doc(db, 'products', part.id);
+          const productSnap = await transaction.get(productRef);
+          if (productSnap.exists()) {
+            const currentQty = productSnap.data().quantity || 0;
+            const newQty = Math.max(0, currentQty - part.quantity);
+            transaction.update(productRef, { quantity: newQty });
+          }
+        }
+      }
+
+      return { newOsNumber: currentNumber };
     });
 
     const docRef = await withTimeout(addDoc(OS_COL, {
@@ -279,29 +300,22 @@ export const getUsers = async (): Promise<User[]> => {
   try {
     const snapshot = await getDocs(USERS_COL);
     if (snapshot.empty) {
-      // Cria usuário admin padrão se não existir nenhum
-      const adminUser = {
-        username: 'admin',
-        password: '123',
-        name: 'Administrador',
-        role: 'ADMIN',
-        commissionRate: 0,
-        createdAt: new Date().toISOString()
-      };
-      await addDoc(USERS_COL, adminUser);
-      return [adminUser as any];
+      // Coleção vazia: não cria usuário automático com senha trivial.
+      // O administrador deve criar o primeiro usuário manualmente via Firebase Console.
+      console.warn('Nenhum usuário encontrado no Firestore. Crie o primeiro usuário via Firebase Console.');
+      return [];
     }
     return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User));
   } catch (error: any) {
-    // Caso de falta de permissão (Usuário padrão tentou listar toda a coleção mas a rule bloqueou)
+    // Usuário com role USER não tem acesso à lista completa: retorna apenas o próprio perfil
     if (error.code === 'permission-denied' && auth.currentUser) {
-      console.warn("Acesso negado ao buscar lista de usuários (apenas admins podem ver todos). Retornando apenas próprio perfil.");
-      const currentDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
+      console.warn('Acesso negado ao buscar lista de usuários. Retornando apenas próprio perfil.');
+      const currentDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
       if (currentDoc.exists()) {
         return [{ ...currentDoc.data(), id: currentDoc.id } as User];
       }
     }
-    console.warn("Erro ao buscar usuários (pode não haver usuários ou regras estritas): ", error);
+    console.warn('Erro ao buscar usuários:', error);
     return [];
   }
 };
@@ -360,7 +374,8 @@ export const api = {
 
   getCurrentUser: (): Promise<User | null> => {
     return new Promise((resolve) => {
-      onAuthStateChanged(auth, async (firebaseUser) => {
+      const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+        unsubscribe(); // cancela o listener após primeira resposta
         if (firebaseUser) {
           const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
           if (userDoc.exists()) {
@@ -382,7 +397,13 @@ export const api = {
   updateOS: updateServiceOrder,
   updateOSStatus: updateOSStatus,
   removeOS: async (id: string): Promise<void> => {
-    await deleteDoc(doc(db, "service_orders", id));
+    // Soft delete: marca como CANCELADO em vez de deletar permanentemente
+    const osRef = doc(db, "service_orders", id);
+    await updateDoc(osRef, {
+      status: OSStatus.CANCELADO,
+      deletedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
   },
 
   // Clientes

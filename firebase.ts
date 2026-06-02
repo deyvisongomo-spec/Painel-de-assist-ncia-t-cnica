@@ -1,7 +1,7 @@
 
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore, initializeFirestore, memoryLocalCache } from "firebase/firestore";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 
 // Configurações do Firebase (Projeto: painel-assistencia)
 export const firebaseConfig = {
@@ -30,25 +30,13 @@ export const db = initializeFirestore(app, {
 
 export const auth = getAuth(app);
 
-console.log("🚀 Firebase Initialized with Long Polling and Memory Cache");
-
-export async function loginAdmin() {
-  try {
-    await signInWithEmailAndPassword(auth, "deyvisongomo@gmail.com", "Dgs86094966+");
-    console.log("✅ Login OK! Carregando painel...");
-    window.location.reload(); // recarrega para aplicar login
-  } catch (error: any) {
-    console.error("❌ Login falhou:", error.message);
-  }
+// Verifica login ao carregar (apenas em desenvolvimento)
+if (import.meta.env.DEV) {
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      console.log("Firebase: sessão ativa -", user.email);
+    }
+  });
 }
-
-// Verifica login ao carregar
-onAuthStateChanged(auth, (user) => {
-  if (user) {
-    console.log("👤 Logado:", user.email);
-  } else {
-    console.log("🔓 Faça login primeiro");
-  }
-});
 
 export default app;
