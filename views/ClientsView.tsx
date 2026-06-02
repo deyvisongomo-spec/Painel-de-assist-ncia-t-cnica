@@ -1,4 +1,5 @@
 
+import { toast } from 'sonner';
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Plus, UserCircle, Phone, MapPin, Edit, Trash2, X, Save, Loader2, Upload, FileText } from 'lucide-react';
 import { api } from '../services/api';
@@ -24,6 +25,7 @@ const ClientsView: React.FC = () => {
     phone: '',
     secondaryPhone: '',
     email: '',
+    birthDate: '',
     address: {
       street: '',
       number: '',
@@ -60,6 +62,7 @@ const ClientsView: React.FC = () => {
       phone: client.phone,
       secondaryPhone: client.secondaryPhone || '',
       email: client.email || '',
+      birthDate: client.birthDate || '',
       address: client.address || {
         street: '',
         number: '',
@@ -82,7 +85,7 @@ const ClientsView: React.FC = () => {
       loadClients();
     } catch (error) {
       console.error('Erro ao excluir cliente:', error);
-      alert('Erro ao excluir cliente.');
+      toast.error('Erro ao excluir cliente.');
     }
   };
 
@@ -103,7 +106,7 @@ const ClientsView: React.FC = () => {
       complete: async (results) => {
         const rows = results.data as any[];
         if (rows.length === 0) {
-          alert('Arquivo CSV vazio ou inválido.');
+          toast.error('Arquivo CSV vazio ou inválido.');
           setIsImporting(false);
           return;
         }
@@ -136,10 +139,10 @@ const ClientsView: React.FC = () => {
              });
              successCount++;
           }
-          alert(`✅ SUCESSO!\n${successCount} clientes importados perfeitamente.`);
+          toast.success(`✅ SUCESSO!\n${successCount} clientes importados perfeitamente.`);
           loadClients();
         } catch(err) {
-          alert("Houve um erro no processo de importação. Verifique o console.");
+          toast.error("Houve um erro no processo de importação. Verifique o console.");
           console.error(err);
         } finally {
           setIsImporting(false);
@@ -147,7 +150,7 @@ const ClientsView: React.FC = () => {
         }
       },
       error: (err) => {
-        alert('Erro ao ler a planilha: ' + err.message);
+        toast.error('Erro ao ler a planilha: ' + err.message);
         setIsImporting(false);
       }
     });
@@ -155,7 +158,7 @@ const ClientsView: React.FC = () => {
 
   const handleSave = async () => {
     if (!formData.name || !formData.phone) {
-      alert('Nome e Telefone são obrigatórios!');
+      toast.error('Nome e Telefone são obrigatórios!');
       return;
     }
 
@@ -174,6 +177,7 @@ const ClientsView: React.FC = () => {
         phone: '',
         secondaryPhone: '',
         email: '',
+        birthDate: '',
         address: {
           street: '',
           number: '',
@@ -188,7 +192,7 @@ const ClientsView: React.FC = () => {
       loadClients();
     } catch (error) {
       console.error('Erro ao salvar cliente:', error);
-      alert('Erro ao salvar cliente. Verifique o console.');
+      toast.error('Erro ao salvar cliente. Verifique o console.');
     } finally {
       setIsSaving(false);
     }
@@ -269,6 +273,15 @@ const ClientsView: React.FC = () => {
                     placeholder="cliente@email.com"
                     value={formData.email}
                     onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1">Aniversário</label>
+                  <input 
+                    type="date" 
+                    className="w-full p-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none shadow-sm font-semibold text-slate-600" 
+                    value={formData.birthDate || ''}
+                    onChange={(e) => setFormData({...formData, birthDate: e.target.value})}
                   />
                 </div>
               </div>
@@ -492,9 +505,9 @@ const ClientsView: React.FC = () => {
                   const clientOrders = orders.filter(o => o.clientId === client.id);
                   if (clientOrders.length > 0) {
                     // Aqui você pode implementar a navegação para o histórico
-                    alert(`Este cliente possui ${clientOrders.length} ordens de serviço.`);
+                    toast.info(`Este cliente possui ${clientOrders.length} ordens de serviço.`);
                   } else {
-                    alert("Esse cliente não possui ordem de serviço");
+                    toast.error("Esse cliente não possui ordem de serviço");
                   }
                 }}
                 className="w-full mt-8 py-3 bg-slate-50 text-slate-600 text-xs font-black uppercase tracking-widest rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-inner"

@@ -54,6 +54,7 @@ export interface Client {
   phone: string;
   secondaryPhone?: string;
   email: string;
+  birthDate?: string; // Aniversário do cliente
   address: {
     street: string;
     number: string;
@@ -83,7 +84,8 @@ export interface Product {
 
 export interface ServiceOrder {
   id: string;
-  osNumber: string;
+  osNumber?: string;
+  osNumberValue?: number;
   type: OSType;
   clientId: string;
   clientName: string;

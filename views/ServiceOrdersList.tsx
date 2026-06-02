@@ -1,4 +1,5 @@
 
+import { toast } from 'sonner';
 import React, { useState, useEffect } from 'react';
 import { Search, Plus, Filter, MoreVertical, Eye, Printer, Trash2, Loader2 } from 'lucide-react';
 import { STATUS_COLORS } from '../constants';
@@ -41,7 +42,7 @@ const ServiceOrdersList: React.FC<ServiceOrdersListProps> = ({ onNewOS, onViewOS
         await loadOrders();
       } catch (error) {
         console.error('Erro ao excluir OS:', error);
-        alert('Erro ao excluir Ordem de Serviço.');
+        toast.error('Erro ao excluir Ordem de Serviço.');
       }
     }
   };
@@ -118,7 +119,7 @@ const ServiceOrdersList: React.FC<ServiceOrdersListProps> = ({ onNewOS, onViewOS
                 {filteredOrders.map((os) => (
                   <tr key={os.id} className="hover:bg-slate-50 transition-colors group">
                     <td className="px-6 py-4">
-                      <span className="font-bold text-blue-600">#{os.osNumber}</span>
+                      <span className="font-bold text-blue-600">{os.osNumber || '---'}</span>
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase border ${
@@ -141,8 +142,13 @@ const ServiceOrdersList: React.FC<ServiceOrdersListProps> = ({ onNewOS, onViewOS
                         {os.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-xs text-slate-500 font-bold">
-                      {os.openedAt ? new Date(os.openedAt).toLocaleDateString('pt-BR') : 'N/A'}
+                    <td className="px-6 py-4 text-xs text-slate-500 font-bold whitespace-nowrap">
+                      {os.openedAt ? (
+                        <>
+                          <div className="font-semibold text-slate-700">{new Date(os.openedAt).toLocaleDateString('pt-BR')}</div>
+                          <div className="text-[10px] text-slate-400">{new Date(os.openedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
+                        </>
+                      ) : 'N/A'}
                     </td>
                     <td className="px-6 py-4 text-center">
                       <div className="flex items-center justify-center gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">

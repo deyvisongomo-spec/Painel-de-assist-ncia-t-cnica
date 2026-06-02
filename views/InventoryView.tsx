@@ -1,3 +1,4 @@
+import { toast } from 'sonner';
 import React, { useState, useEffect } from 'react';
 import { Search, Plus, Filter, AlertTriangle, Package, DollarSign, Timer, TrendingUp, Loader2, X, Save } from 'lucide-react';
 import { api } from '../services/api';
@@ -43,7 +44,7 @@ const InventoryView: React.FC = () => {
 
   const handleSave = async () => {
     if (!formData.name || !formData.category) {
-      alert('Nome e Categoria são obrigatórios!');
+      toast.error('Nome e Categoria são obrigatórios!');
       return;
     }
 
@@ -64,7 +65,7 @@ const InventoryView: React.FC = () => {
       loadInventory();
     } catch (error) {
       console.error('Erro ao salvar produto:', error);
-      alert('Erro ao salvar produto.');
+      toast.error('Erro ao salvar produto.');
     } finally {
       setIsSaving(false);
     }

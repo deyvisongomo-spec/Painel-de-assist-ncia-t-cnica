@@ -1,4 +1,5 @@
 
+import { toast } from 'sonner';
 import React, { useState, useEffect } from 'react';
 import { 
   ArrowLeft, Save, UserPlus, Search, Smartphone, Printer, FileText, CheckCircle2, ShieldAlert, Plus, Trash2, Loader2, DollarSign, MessageCircle
@@ -119,8 +120,8 @@ const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({ onBack, onSave, ini
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log('ServiceOrderForm: handleSubmit iniciado');
-    if (!formData.clientName) return alert("Por favor, selecione ou informe o cliente.");
-    if (!formData.termsAccepted) return alert("Por favor, aceite os termos.");
+    if (!formData.clientName) return toast.error("Por favor, selecione ou informe o cliente.");
+    if (!formData.termsAccepted) return toast.error("Por favor, aceite os termos.");
     
     setIsSaving(true);
     try {
@@ -140,7 +141,7 @@ const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({ onBack, onSave, ini
   const selectedClientData = clients.find(c => c.id === formData.clientId);
 
   const handleWhatsAppNotify = () => {
-    if (!selectedClientData?.phone) return alert("Cliente não possui telefone cadastrado.");
+    if (!selectedClientData?.phone) return toast.error("Cliente não possui telefone cadastrado.");
     const cleanPhone = selectedClientData.phone.replace(/\D/g, '');
     let msg = `Olá *${formData.clientName}*! 👋\n\n`;
     msg += `Passando para dar atualizações sobre o seu aparelho: *${formData.brand} ${formData.model}*.\n`;

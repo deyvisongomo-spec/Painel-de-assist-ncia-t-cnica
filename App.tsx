@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, Component, ReactNode } from 'react';
+import { Toaster, toast } from 'sonner';
 import Layout from './components/Layout';
 import Dashboard from './views/Dashboard';
 import ClientsView from './views/ClientsView';
@@ -157,10 +158,10 @@ const App: React.FC = () => {
 
       if (selectedOS) {
         await api.updateOS(selectedOS.id, osData);
-        alert("Ordem de Serviço atualizada com sucesso!");
+        toast.success("Ordem de Serviço atualizada com sucesso!");
       } else {
         await api.createOS(osData);
-        alert("Ordem de Serviço salva com sucesso!");
+        toast.success("Ordem de Serviço salva com sucesso!");
       }
       
       setIsCreatingOS(false);
@@ -168,7 +169,7 @@ const App: React.FC = () => {
       setActiveTab('os');
     } catch (error) {
       console.error('Erro ao salvar OS:', error);
-      alert('Erro ao salvar Ordem de Serviço.');
+      toast.error('Erro ao salvar Ordem de Serviço.');
     }
   };
 
@@ -255,6 +256,7 @@ const App: React.FC = () => {
 
     return (
       <ErrorBoundary>
+        <Toaster richColors position="top-right" />
         {content}
       </ErrorBoundary>
     );
@@ -262,6 +264,7 @@ const App: React.FC = () => {
 
   return (
     <ErrorBoundary>
+      <Toaster richColors position="top-right" />
       <Layout 
         user={currentUser} 
         activeTab={activeTab} 

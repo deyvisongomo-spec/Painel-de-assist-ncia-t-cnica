@@ -244,8 +244,8 @@ const CashReportView: React.FC<CashReportViewProps> = ({ transactions, onBack })
               <tbody className="divide-y divide-slate-50">
                 {filteredData.map(t => (
                   <tr key={t.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-8 py-4 text-xs font-bold text-slate-400">
-                      {new Date(t.date).toLocaleDateString('pt-BR')}
+                    <td className="px-8 py-4 text-xs font-bold text-slate-400 whitespace-nowrap">
+                      {new Date(t.date).toLocaleDateString('pt-BR')} <span className="text-[10px] font-medium opacity-60 ml-1">{new Date(t.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                     </td>
                     <td className="px-4 py-4">
                       <p className="text-sm font-black text-slate-800 tracking-tight">{t.description}</p>

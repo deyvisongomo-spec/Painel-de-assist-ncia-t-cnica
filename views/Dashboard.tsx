@@ -160,7 +160,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onNewOS, onViewAllOS }) => {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right text-[10px] font-black text-slate-400">
-                      {new Date(os.openedAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                      <div>{new Date(os.openedAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</div>
+                      <div className="font-medium text-slate-300">{new Date(os.openedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
                     </td>
                   </tr>
                 ))}

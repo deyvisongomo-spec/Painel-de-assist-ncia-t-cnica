@@ -11,7 +11,8 @@ import {
   where,
   orderBy,
   setDoc,
-  limit
+  limit,
+  runTransaction
 } from "firebase/firestore";
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "firebase/auth";
 import { Client, ServiceOrder, Product, CashTransaction, OSStatus, User, ActivityLog, CommissionReport, Supplier, CatalogItem, Reminder } from "../types";
@@ -110,13 +111,26 @@ export const getServiceOrders = async (limitCount: number = 300): Promise<Servic
 export const saveServiceOrder = async (os: Omit<ServiceOrder, "id">): Promise<ServiceOrder> => {
   console.log('Iniciando salvamento de OS...', os);
   try {
+    const counterRef = doc(db, 'metadata', 'osCounter');
+    const newOsNumber = await runTransaction(db, async (transaction) => {
+      const counterDoc = await transaction.get(counterRef);
+      let currentNumber = 1;
+      if (counterDoc.exists() && counterDoc.data().current) {
+        currentNumber = counterDoc.data().current + 1;
+      }
+      transaction.set(counterRef, { current: currentNumber }, { merge: true });
+      return currentNumber;
+    });
+
     const docRef = await withTimeout(addDoc(OS_COL, {
       ...os,
+      osNumber: newOsNumber.toString(),
+      osNumberValue: newOsNumber,
       openedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }));
-    console.log('OS salva no Firebase:', docRef.id);
-    return { ...os, id: docRef.id } as ServiceOrder;
+    console.log('OS salva no Firebase com número:', newOsNumber, 'ID:', docRef.id);
+    return { ...os, id: docRef.id, osNumber: newOsNumber.toString(), osNumberValue: newOsNumber } as ServiceOrder;
   } catch (error) {
     console.error('Erro ao salvar OS no Firebase:', error);
     throw error;

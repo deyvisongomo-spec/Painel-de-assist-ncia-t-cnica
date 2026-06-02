@@ -72,12 +72,18 @@ const AuditLogsView: React.FC = () => {
                   <td className="px-8 py-6 whitespace-nowrap">
                     <div className="flex items-center gap-3 text-slate-500 font-bold text-xs">
                       <Clock size={14} className="text-slate-300" />
-                      {new Date(log.timestamp).toLocaleString('pt-BR', { 
-                        day: '2-digit', 
-                        month: '2-digit', 
-                        hour: '2-digit', 
-                        minute: '2-digit' 
-                      })}
+                      <div>
+                        {new Date(log.timestamp).toLocaleDateString('pt-BR', { 
+                          day: '2-digit', 
+                          month: '2-digit'
+                        })}
+                        <span className="font-medium opacity-60 ml-1">
+                          {new Date(log.timestamp).toLocaleTimeString('pt-BR', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })}
+                        </span>
+                      </div>
                     </div>
                   </td>
                   <td className="px-6 py-6">

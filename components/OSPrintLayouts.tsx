@@ -102,7 +102,7 @@ export const OSPrintLayouts: React.FC<OSPrintLayoutsProps> = ({
           <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '2px dashed #000', borderBottom: '2px solid #000', padding: '8px 0', marginBottom: '10px'}}>
             <div style={{textAlign: 'center'}}>
               <p style={{margin: '0 0 2px 0', fontSize: '11pt'}}><b>Nº OS</b></p>
-              <p style={{margin: '0', fontSize: '12pt', fontWeight: '900'}}>{initialData?.osNumber || 'NOVA'}</p>
+              <p style={{margin: '0', fontSize: '12pt', fontWeight: '900'}}>{initialData?.osNumber || '---'}</p>
             </div>
             <div style={{textAlign: 'center'}}>
               <p style={{margin: '0 0 2px 0', fontSize: '9pt'}}><b>Criação</b></p>
@@ -216,7 +216,7 @@ export const OSPrintLayouts: React.FC<OSPrintLayoutsProps> = ({
           <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '15px 25px', borderRadius: '12px', marginBottom: '25px', border: '1px solid #e2e8f0'}}>
             <div>
               <span style={{fontSize: '10px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', display: 'block'}}>Documento</span>
-              <h2 style={{margin: 0, fontWeight: '900', color: '#0f172a'}}>ORDEM DE SERVIÇO #{initialData?.osNumber || '---'}</h2>
+              <h2 style={{margin: 0, fontWeight: '900', color: '#0f172a'}}>ORDEM DE SERVIÇO {initialData?.osNumber ? `#${initialData.osNumber}` : '---'}</h2>
             </div>
             <div style={{textAlign: 'right'}}>
               <span style={{fontSize: '10px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', display: 'block'}}>Data de Emissão</span>

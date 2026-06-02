@@ -1,3 +1,4 @@
+import { toast } from 'sonner';
 import React, { useState, useEffect } from 'react';
 import { 
   Search, Plus, Truck, Phone, MapPin, Edit, Trash2, X, Save, 
@@ -42,7 +43,7 @@ const SuppliersView: React.FC = () => {
 
   const handleSave = async () => {
     if (!formData.name) {
-      alert('Nome é obrigatório!');
+      toast.error('Nome é obrigatório!');
       return;
     }
 
@@ -60,7 +61,7 @@ const SuppliersView: React.FC = () => {
       loadSuppliers();
     } catch (error) {
       console.error('Erro ao salvar fornecedor:', error);
-      alert('Erro ao salvar fornecedor.');
+      toast.error('Erro ao salvar fornecedor.');
     } finally {
       setIsSaving(false);
     }

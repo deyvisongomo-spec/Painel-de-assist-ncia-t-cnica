@@ -1,4 +1,5 @@
 
+import { toast } from 'sonner';
 import React, { useState, useEffect } from 'react';
 import { Image, Save, Building2, Phone, MapPin, Hash, Trash2 } from 'lucide-react';
 import { formatPhone, formatCPFOrCNPJ } from '../src/lib/utils';
@@ -33,7 +34,7 @@ const SettingsView: React.FC = () => {
 
   const saveConfig = () => {
     localStorage.setItem('app_config', JSON.stringify(config));
-    alert('Configurações salvas com sucesso!');
+    toast.success('Configurações salvas com sucesso!');
     window.location.reload();
   };
 

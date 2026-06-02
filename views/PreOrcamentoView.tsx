@@ -1,3 +1,4 @@
+import { toast } from 'sonner';
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Calculator, 
@@ -78,7 +79,7 @@ const PreOrcamentoView: React.FC = () => {
       loadCatalog();
     } catch (error) {
       console.error('Erro ao salvar item:', error);
-      alert('Erro ao salvar item no catálogo.');
+      toast.error('Erro ao salvar item no catálogo.');
     }
   };
 
@@ -98,7 +99,7 @@ const PreOrcamentoView: React.FC = () => {
       loadCatalog();
     } catch (error) {
       console.error('Erro ao remover item:', error);
-      alert('Erro ao remover item do catálogo.');
+      toast.error('Erro ao remover item do catálogo.');
     }
   };
 

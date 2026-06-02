@@ -1,4 +1,5 @@
 
+import { toast } from 'sonner';
 import React, { useState, useEffect } from 'react';
 import { DollarSign, ArrowUpCircle, ArrowDownCircle, ShoppingCart, Plus, Search, Trash2, FileText, Calendar, X, Save, Loader2 } from 'lucide-react';
 import CashReportView from './CashReportView';
@@ -16,6 +17,16 @@ const CashView: React.FC<CashViewProps> = ({ currentUser }) => {
   const [transactions, setTransactions] = useState<CashTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Quick Sale State
+  const [saleItems, setSaleItems] = useState<any[]>([]);
+  const [itemSearch, setItemSearch] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('Pix');
+  
+  // Calculate quick sale totals
+  const saleSubtotal = saleItems.reduce((acc, item) => acc + ((Number(item.price) || 0) * (Number(item.qtd) || 0)), 0);
+  const saleDiscount = 0; // Configured for future features
+  const saleTotal = saleSubtotal - saleDiscount;
 
   // Form State for manual transaction
   const [formData, setFormData] = useState<Omit<CashTransaction, 'id' | 'date'>>({
@@ -43,7 +54,7 @@ const CashView: React.FC<CashViewProps> = ({ currentUser }) => {
 
   const handleSaveTransaction = async () => {
     if (!formData.description || formData.value <= 0) {
-      alert('Descrição e Valor são obrigatórios!');
+      toast.error('Descrição e Valor são obrigatórios!');
       return;
     }
 
@@ -63,7 +74,7 @@ const CashView: React.FC<CashViewProps> = ({ currentUser }) => {
       loadTransactions();
     } catch (error) {
       console.error('Erro ao salvar transação:', error);
-      alert('Erro ao salvar transação.');
+      toast.error('Erro ao salvar transação.');
     } finally {
       setIsSaving(false);
     }
@@ -97,9 +108,15 @@ const CashView: React.FC<CashViewProps> = ({ currentUser }) => {
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input type="text" className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none shadow-sm" placeholder="Nome do produto ou código de barras..." />
+                  <input type="text" value={itemSearch} onChange={(e) => setItemSearch(e.target.value)} className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none shadow-sm" placeholder="Nome do produto ou código de barras... \n(Em desenvolvimento: Busca de Produtos)" />
                 </div>
-                <button className="bg-blue-600 text-white px-6 rounded-xl font-bold hover:bg-blue-700 transition-all">Adicionar</button>
+                <button 
+                  onClick={() => {
+                    if(!itemSearch) return;
+                    setSaleItems([...saleItems, { id: Date.now().toString(), name: itemSearch, price: '', qtd: 1 }]);
+                    setItemSearch('');
+                  }}
+                  className="bg-blue-600 text-white px-6 rounded-xl font-bold hover:bg-blue-700 transition-all cursor-pointer">Adicionar</button>
               </div>
             </div>
 
@@ -115,12 +132,49 @@ const CashView: React.FC<CashViewProps> = ({ currentUser }) => {
                    </tr>
                  </thead>
                  <tbody className="divide-y divide-slate-100">
-                    {/* Itens da venda rápida seriam gerenciados aqui */}
+                    {saleItems.map((item, index) => (
+                      <tr key={item.id} className="hover:bg-slate-50">
+                        <td className="px-6 py-4 font-bold">{item.name}</td>
+                        <td className="px-6 py-4 text-center">
+                          <input 
+                            type="number" 
+                            min="1" 
+                            value={item.qtd} 
+                            onChange={(e) => {
+                              const newItems = [...saleItems];
+                              newItems[index].qtd = e.target.value;
+                              setSaleItems(newItems);
+                            }}
+                            className="w-16 text-center border border-slate-200 rounded p-1 outline-none focus:border-blue-500 font-bold" 
+                          />
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <input 
+                            type="number" 
+                            step="0.01"
+                            value={item.price} 
+                            onChange={(e) => {
+                              const newItems = [...saleItems];
+                              newItems[index].price = e.target.value;
+                              setSaleItems(newItems);
+                            }}
+                            className="w-24 text-right border border-slate-200 rounded p-1 outline-none focus:border-blue-500 font-bold" 
+                            placeholder="0.00"
+                          />
+                        </td>
+                        <td className="px-6 py-4 text-right font-black text-slate-700">R$ {((Number(item.price) || 0) * (Number(item.qtd) || 0)).toFixed(2)}</td>
+                        <td className="px-6 py-4 text-right">
+                          <button onClick={() => setSaleItems(saleItems.filter(i => i.id !== item.id))} className="text-slate-300 hover:text-rose-500 transition-colors"><Trash2 size={16} /></button>
+                        </td>
+                      </tr>
+                    ))}
                  </tbody>
                </table>
-               <div className="p-10 text-center text-slate-400 italic">
-                 Nenhum item adicionado à venda.
-               </div>
+               {saleItems.length === 0 && (
+                 <div className="p-10 text-center text-slate-400 italic">
+                   Nenhum item adicionado à venda.
+                 </div>
+               )}
             </div>
           </div>
 
@@ -130,29 +184,57 @@ const CashView: React.FC<CashViewProps> = ({ currentUser }) => {
               <div className="space-y-4">
                 <div className="flex justify-between text-slate-400">
                    <span>Subtotal:</span>
-                   <span>R$ 0,00</span>
+                   <span>R$ {saleSubtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-slate-400">
                    <span>Desconto:</span>
-                   <span>- R$ 0,00</span>
+                   <span>- R$ {saleDiscount.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-3xl font-bold pt-4">
                    <span>Total:</span>
-                   <span>R$ 0,00</span>
+                   <span>R$ {saleTotal.toFixed(2)}</span>
                 </div>
               </div>
 
               <div className="mt-8 space-y-4">
                  <div>
                    <label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block">Forma de Pagamento</label>
-                   <select className="w-full bg-white border border-slate-200 rounded-xl p-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                     <option>Pix</option>
-                     <option>Cartão de Crédito</option>
-                     <option>Dinheiro</option>
+                   <select 
+                     value={paymentMethod}
+                     onChange={(e) => setPaymentMethod(e.target.value)}
+                     className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                   >
+                     <option value="Pix">Pix</option>
+                     <option value="Cartão de Crédito">Cartão de Crédito</option>
+                     <option value="Cartão de Débito">Cartão de Débito</option>
+                     <option value="Dinheiro">Dinheiro</option>
                    </select>
                  </div>
-                 <button className="w-full bg-blue-600 hover:bg-blue-700 py-4 rounded-xl font-bold text-lg shadow-lg shadow-blue-900 transition-all">
-                   Finalizar Venda
+                 <button 
+                   onClick={async () => {
+                     if(saleItems.length === 0) return toast.info('Adicione pelo menos um item.');
+                     setIsSaving(true);
+                     try {
+                        const productNames = saleItems.map(i => `${i.qtd}x ${i.name}`).join(', ');
+                        await api.saveTransaction({
+                           description: `Venda Direta: ${productNames}`,
+                           type: 'entrada',
+                           value: saleTotal,
+                           paymentMethod,
+                           date: new Date().toISOString()
+                        });
+                        setSaleItems([]);
+                        setIsQuickSale(false);
+                        loadTransactions();
+                     } catch(err) {
+                        toast.error('Erro ao processar venda');
+                     } finally {
+                        setIsSaving(false);
+                     }
+                   }}
+                   disabled={isSaving || saleItems.length === 0}
+                   className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 py-4 rounded-xl font-bold text-lg shadow-lg shadow-blue-900 transition-all flex items-center justify-center gap-2">
+                   {isSaving ? <Loader2 className="animate-spin" size={24} /> : 'Finalizar Venda'}
                  </button>
               </div>
             </div>
@@ -323,8 +405,9 @@ const CashView: React.FC<CashViewProps> = ({ currentUser }) => {
                <tbody className="divide-y divide-slate-100">
                  {transactions.map(t => (
                    <tr key={t.id} className="hover:bg-slate-50">
-                     <td className="px-6 py-4 text-xs text-slate-500">
-                       {new Date(t.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                     <td className="px-6 py-4 text-xs text-slate-500 whitespace-nowrap">
+                       <div className="font-semibold text-slate-800">{new Date(t.date).toLocaleDateString('pt-BR')}</div>
+                       <div className="text-slate-400">{new Date(t.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
                      </td>
                      <td className="px-6 py-4 text-sm font-semibold">{t.description}</td>
                      <td className="px-6 py-4">
