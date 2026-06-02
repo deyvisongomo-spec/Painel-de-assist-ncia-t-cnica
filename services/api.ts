@@ -12,6 +12,9 @@ import {
   orderBy,
   setDoc,
   limit,
+  startAfter,
+  QueryDocumentSnapshot,
+  DocumentData,
   runTransaction
 } from "firebase/firestore";
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "firebase/auth";
@@ -96,16 +99,58 @@ export const saveProduct = async (product: Omit<Product, "id">): Promise<Product
 };
 
 // --- ORDENS DE SERVIÇO (OS) ---
+const PAGE_SIZE = 50;
+
 export const getServiceOrders = async (limitCount: number = 300): Promise<ServiceOrder[]> => {
   try {
     const q = query(OS_COL, orderBy("openedAt", "desc"), limit(limitCount));
     const snapshot = await withTimeout(getDocs(q));
     return snapshot.docs
       .map(doc => ({ ...doc.data(), id: doc.id } as ServiceOrder))
-      // Filtra OS com soft delete (deletedAt presente)
       .filter(os => !(os as any).deletedAt);
   } catch (error) {
     console.error('Erro ao buscar OS no Firebase:', error);
+    throw error;
+  }
+};
+
+/**
+ * Busca OS com paginação por cursor e filtro server-side de status.
+ * @param statusFilter - Status para filtrar (undefined = todos)
+ * @param lastDoc - Último documento da página anterior (undefined = primeira página)
+ */
+export const getServiceOrdersPaged = async (
+  statusFilter?: OSStatus,
+  lastDoc?: QueryDocumentSnapshot<DocumentData>
+): Promise<{ orders: ServiceOrder[]; lastDoc: QueryDocumentSnapshot<DocumentData> | null; hasMore: boolean }> => {
+  try {
+    const constraints: any[] = [
+      orderBy("openedAt", "desc"),
+      limit(PAGE_SIZE + 1) // busca um a mais para saber se há próxima página
+    ];
+
+    // Filtro de status server-side — OS canceladas com deletedAt são excluídas
+    if (statusFilter) {
+      constraints.unshift(where("status", "==", statusFilter));
+    }
+    if (lastDoc) {
+      constraints.push(startAfter(lastDoc));
+    }
+
+    const q = query(OS_COL, ...constraints);
+    const snapshot = await withTimeout(getDocs(q));
+
+    const docs = snapshot.docs.filter(d => !d.data().deletedAt);
+    const hasMore = docs.length > PAGE_SIZE;
+    const pageDocs = hasMore ? docs.slice(0, PAGE_SIZE) : docs;
+
+    return {
+      orders: pageDocs.map(d => ({ ...d.data(), id: d.id } as ServiceOrder)),
+      lastDoc: pageDocs.length > 0 ? pageDocs[pageDocs.length - 1] : null,
+      hasMore
+    };
+  } catch (error) {
+    console.error('Erro ao buscar OS paginadas:', error);
     throw error;
   }
 };
