@@ -128,6 +128,11 @@ service cloud.firestore {
 
     match /activity_logs/{id} { allow read: if isAuthenticated(); allow create: if isAuthenticated(); allow update, delete: if isAdmin(); }
     
+    // Contador de OS e metadados internos do sistema
+    match /metadata/{id} {
+      allow read, write: if isAuthenticated();
+    }
+    
     // Fornecedores: qualquer autenticado lê, apenas ADMIN escreve
     match /suppliers/{id} {
       allow read: if isAuthenticated();
