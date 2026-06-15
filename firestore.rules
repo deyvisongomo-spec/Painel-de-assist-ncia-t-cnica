@@ -1,30 +1,7 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // ===============================================================
-    // Assumed Data Model
-    // ===============================================================
-    // Collection: users
-    // Document ID: user UID
-    // Fields: 
-    //   - id: string
-    //   - username: string (email)
-    //   - name: string
-    //   - role: string ('ADMIN', 'USER')
-    //   - commissionRate: number
-    //   - createdAt: string
-    //
-    // Collection: clients
-    // Fields: id, name, cpfCnpj, phone, secondaryPhone, email, address, notes, createdAt
-    //
-    // Collection: service_orders
-    // Fields: id, osNumber, type, clientId, clientName, responsibleId, responsibleName, device(map), financial(map), status, problemReported, technicalDiagnosis, servicesToExecute, openedAt, updatedAt
-    // ===============================================================
 
-    // ===============================================================
-    // Helper Functions
-    // ===============================================================
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -39,65 +16,20 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    function isDocOwner() {
-      return isAuthenticated() && request.auth.uid == resource.data.responsibleId;
-    }
-
-    function hasRequiredFields(fields) {
-      return request.resource.data.keys().hasAll(fields);
-    }
-    
     function areImmutableFieldsUnchanged(fields) {
       return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
     }
 
-    function isValidStringLength(val, maxLen) {
-      return val is string && val.size() <= maxLen;
-    }
-
-    function isValidDateString(dateStr) {
-      return dateStr is string && dateStr.size() >= 10 && dateStr.size() <= 30;
-    }
-
-    // ===============================================================
-    // Domain Validators
-    // ===============================================================
     function isValidUser(data) {
       return data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
              data.username is string && data.username.size() > 0 && data.username.size() < 100 &&
              data.role in ['ADMIN', 'USER'] &&
-             data.commissionRate is number && data.commissionRate >= 0 && data.commissionRate <= 100 &&
-             isValidStringLength(data.id, 50);
+             data.commissionRate is number && data.commissionRate >= 0 && data.commissionRate <= 100;
     }
 
-    function isValidClient(data) {
-      return data.name is string && data.name.size() > 0 && data.name.size() < 150 &&
-             data.phone is string && data.phone.size() < 50;
-    }
-
-    function isValidProduct(data) {
-      return data.name is string && data.name.size() > 0 && data.name.size() < 150 &&
-             data.salePrice is number && data.salePrice >= 0 &&
-             data.costPrice is number && data.costPrice >= 0 &&
-             data.quantity is number && data.quantity >= 0;
-    }
-
-    function isValidOS(data) {
-      return data.clientName is string && data.clientName.size() > 0 && data.clientName.size() < 150 &&
-             data.status is string && data.status.size() < 50 &&
-             data.responsibleId is string && data.responsibleId.size() < 50 &&
-             data.financial is map && data.financial.totalValue is number && data.financial.totalValue >= 0 &&
-             data.device is map && data.device.brand is string &&
-             (!('problemReported' in data) || isValidStringLength(data.problemReported, 5000));
-    }
-
-    // ===============================================================
-    // Rules
-    // ===============================================================
-
+    // Usuários
     match /users/{userId} {
       allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
-      // Apenas Admins podem criar ou um novo admin no bootstrap
       allow create: if isAuthenticated() && isValidUser(request.resource.data) && 
                     ((isOwner(userId) && request.resource.data.role == 'USER' && request.resource.data.commissionRate == 0) || isAdmin());
       allow update: if isAuthenticated() && isValidUser(request.resource.data) && 
@@ -105,49 +37,53 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Clientes
     match /clients/{id} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isValidClient(request.resource.data);
-      allow update: if isAuthenticated() && isValidClient(request.resource.data);
+      allow create, update: if isAuthenticated();
       allow delete: if isAdmin();
     }
 
+    // Produtos/Estoque
     match /products/{id} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isValidProduct(request.resource.data);
-      allow update: if isAuthenticated() && isValidProduct(request.resource.data);
+      allow create, update: if isAuthenticated();
       allow delete: if isAdmin();
     }
 
+    // Ordens de Serviço
     match /service_orders/{id} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isValidOS(request.resource.data);
-      allow update: if isAuthenticated() && isValidOS(request.resource.data);
+      allow create, update: if isAuthenticated();
       allow delete: if isAdmin();
     }
 
-    match /activity_logs/{id} { allow read: if isAuthenticated(); allow create: if isAuthenticated(); allow update, delete: if isAdmin(); }
-    
-    // Contador de OS e metadados internos do sistema
+    // Contador de OS e metadados internos
     match /metadata/{id} {
       allow read, write: if isAuthenticated();
     }
-    
+
+    // Logs de atividade
+    match /activity_logs/{id} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+
     // Fornecedores: qualquer autenticado lê, apenas ADMIN escreve
     match /suppliers/{id} {
       allow read: if isAuthenticated();
       allow create, update, delete: if isAdmin();
     }
-    
-    // Transações financeiras: qualquer autenticado lê e cria (caixa), apenas ADMIN edita e deleta
+
+    // Transações financeiras: qualquer autenticado lê e cria, apenas ADMIN edita e deleta
     match /transactions/{id} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
       allow update, delete: if isAdmin();
     }
-    
+
     match /catalog/{id} { allow read, write: if isAuthenticated(); }
     match /reminders/{id} { allow read, write: if isAuthenticated(); }
   }
 }
-
