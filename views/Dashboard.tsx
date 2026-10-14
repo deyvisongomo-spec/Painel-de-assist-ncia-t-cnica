@@ -8,9 +8,11 @@ import { Product, ServiceOrder, CashTransaction } from '../types';
 interface DashboardProps {
   onNewOS: () => void;
   onViewAllOS: () => void;
+  userRole?: 'ADMIN' | 'USER';
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ onNewOS, onViewAllOS }) => {
+const Dashboard: React.FC<DashboardProps> = ({ onNewOS, onViewAllOS, userRole }) => {
+  const isAdmin = userRole === 'ADMIN';
   const [isLoading, setIsLoading] = useState(true);
   const [deadStockCount, setDeadStockCount] = useState(0);
   const [recentOS, setRecentOS] = useState<ServiceOrder[]>([]);
@@ -27,15 +29,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onNewOS, onViewAllOS }) => {
   const loadDashboardData = async () => {
     setIsLoading(true);
     try {
-      const [os, products, transactions, deadItems] = await Promise.all([
+      // Faturamento (transações) só é buscado pelo ADMIN — funcionário comum
+      // não tem permissão de ler o caixa no banco.
+      const [os, products, deadItems, transactions] = await Promise.all([
         api.getServiceOrders(),
         api.getInventory(),
-        api.getTransactions(),
-        api.getDeadStock()
+        api.getDeadStock(),
+        isAdmin ? api.getTransactions() : Promise.resolve([])
       ]);
 
       const today = new Date().toISOString().split('T')[0];
-      
+
       const osToday = os.filter(o => o.openedAt && typeof o.openedAt === 'string' && o.openedAt.startsWith(today)).length;
       const criticalStock = products.filter(p => p.quantity <= p.minQuantity).length;
       const revenue = transactions
@@ -56,7 +60,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onNewOS, onViewAllOS }) => {
     { label: 'OS Hoje', value: stats.osToday.toString(), icon: <Plus className="text-blue-600" />, color: 'bg-blue-50' },
     { label: 'Estoque Crítico', value: stats.criticalStock.toString(), icon: <AlertTriangle className={`text-amber-600 ${stats.criticalStock > 0 ? 'animate-pulse' : ''}`} />, color: 'bg-amber-50' },
     { label: 'Estoque Parado (+60d)', value: deadStockCount.toString(), icon: <Timer className="text-rose-600" />, color: 'bg-rose-50' },
-    { label: 'Faturamento Hoje', value: `R$ ${stats.revenue.toFixed(2)}`, icon: <DollarSign className="text-emerald-600" />, color: 'bg-emerald-50' },
+    // Faturamento só aparece para o dono (ADMIN).
+    ...(isAdmin ? [{ label: 'Faturamento Hoje', value: `R$ ${stats.revenue.toFixed(2)}`, icon: <DollarSign className="text-emerald-600" />, color: 'bg-emerald-50' }] : []),
   ];
 
   if (isLoading) {

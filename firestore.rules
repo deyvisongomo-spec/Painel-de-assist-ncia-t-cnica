@@ -63,24 +63,23 @@ service cloud.firestore {
       allow read, write: if isAuthenticated();
     }
 
-    // Logs de atividade
+    // Logs de atividade: qualquer autenticado pode registrar (para gravar logins/ações),
+    // mas apenas ADMIN consegue ler/editar/apagar (tela de Auditoria é só do dono).
     match /activity_logs/{id} {
-      allow read: if isAuthenticated();
+      allow read: if isAdmin();
       allow create: if isAuthenticated();
       allow update, delete: if isAdmin();
     }
 
-    // Fornecedores: qualquer autenticado lê, apenas ADMIN escreve
+    // Fornecedores: apenas ADMIN lê e escreve (tela de Fornecedores é só do dono).
     match /suppliers/{id} {
-      allow read: if isAuthenticated();
-      allow create, update, delete: if isAdmin();
+      allow read, create, update, delete: if isAdmin();
     }
 
-    // Transações financeiras: qualquer autenticado lê e cria, apenas ADMIN edita e deleta
+    // Transações financeiras (Caixa): apenas ADMIN lê e escreve.
+    // Mantém faturamento/caixa fora do alcance de funcionários comuns.
     match /transactions/{id} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update, delete: if isAdmin();
+      allow read, create, update, delete: if isAdmin();
     }
 
     match /catalog/{id} { allow read, write: if isAuthenticated(); }

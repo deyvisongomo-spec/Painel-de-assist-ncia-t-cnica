@@ -1,4 +1,6 @@
-import { db, auth } from "@/firebase";
+import { db, auth, firebaseConfig } from "@/firebase";
+import { initializeApp, deleteApp } from "firebase/app";
+import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
 import { 
   collection, 
   getDocs, 
@@ -156,7 +158,6 @@ export const getServiceOrdersPaged = async (
 };
 
 export const saveServiceOrder = async (os: Omit<ServiceOrder, "id">): Promise<ServiceOrder> => {
-  console.log('Iniciando salvamento de OS...', os);
   try {
     const counterRef = doc(db, 'metadata', 'osCounter');
 
@@ -525,16 +526,59 @@ export const api = {
   // Gestão de Usuários
   getUsersList: getUsers,
   addUser: async (userData: any) => {
-    const data = { ...userData, createdAt: new Date().toISOString() };
-    await addDoc(USERS_COL, data);
-    await registerLog('Equipe', `Novo usuário ${userData.name} cadastrado no Firebase`);
-    return { success: true, message: 'Usuário cadastrado com sucesso.' };
+    const { name, username, email, password, role, commissionRate } = userData;
+
+    // Validações básicas antes de falar com o Firebase
+    if (!email || !email.includes('@')) {
+      return { success: false, message: 'Informe um e-mail válido para o colaborador.' };
+    }
+    if (!password || password.length < 6) {
+      return { success: false, message: 'A senha precisa ter pelo menos 6 caracteres.' };
+    }
+
+    // Cria a conta de login num "app secundário" do Firebase, para NÃO deslogar
+    // o administrador que está cadastrando.
+    const secondaryApp = initializeApp(firebaseConfig, `secondary-${Date.now()}`);
+    const secondaryAuth = getAuth(secondaryApp);
+
+    try {
+      const cred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+      const uid = cred.user.uid;
+
+      // Perfil no Firestore: SEM senha (a senha fica só no Firebase Auth, criptografada).
+      // O documento usa o mesmo ID da conta de login (uid), para o login encontrá-lo.
+      const userDoc = {
+        name: name || email.split('@')[0],
+        username: username || email,
+        email,
+        role: role === 'ADMIN' ? 'ADMIN' : 'USER',
+        commissionRate: Number(commissionRate) || 0,
+        createdAt: new Date().toISOString()
+      };
+      await setDoc(doc(db, "users", uid), userDoc);
+
+      await registerLog('Equipe', `Novo colaborador ${userDoc.name} criado com acesso de login`);
+      return { success: true, message: 'Colaborador criado com sucesso. Ele já pode entrar com o e-mail e a senha.' };
+    } catch (error: any) {
+      console.error('Erro ao criar colaborador:', error);
+      let message = 'Não foi possível criar o colaborador.';
+      if (error.code === 'auth/email-already-in-use') message = 'Este e-mail já está cadastrado no sistema.';
+      else if (error.code === 'auth/invalid-email') message = 'E-mail inválido.';
+      else if (error.code === 'auth/weak-password') message = 'Senha muito fraca. Use pelo menos 6 caracteres.';
+      return { success: false, message };
+    } finally {
+      // Encerra o app secundário para não deixar sessão pendurada.
+      await deleteApp(secondaryApp).catch(() => {});
+    }
   },
   updateUser: async (id: string, updates: any) => {
     const userRef = doc(db, "users", id);
-    await updateDoc(userRef, updates);
-    await registerLog('Equipe', `Usuário ${updates.name || id} atualizado no Firebase`);
-    return { ...updates, id };
+    // Nunca grava senha nem o id dentro do documento. Troca de senha é feita
+    // pelo próprio colaborador na tela de login ("Esqueceu sua senha?").
+    const { password, id: _ignore, ...safeUpdates } = updates;
+    await updateDoc(userRef, safeUpdates);
+    await registerLog('Equipe', `Colaborador ${safeUpdates.name || id} atualizado`);
+    return { ...safeUpdates, id };
   },
   removeUser: async (id: string) => {
     const userRef = doc(db, "users", id);

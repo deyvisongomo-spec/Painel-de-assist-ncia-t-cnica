@@ -100,7 +100,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                   required
                   value={user}
                   onChange={e => setUser(e.target.value)}
-                  placeholder="E-mail ou Usuário"
+                  placeholder="E-mail"
                   className="w-full bg-white/5 border border-white/10 p-4 pl-12 rounded-2xl text-white font-bold outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white/10 transition-all placeholder:text-slate-600"
                 />
               </div>
