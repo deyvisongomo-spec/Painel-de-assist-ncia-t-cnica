@@ -96,6 +96,15 @@ const App: React.FC = () => {
     });
   }, []);
 
+  // Se um funcionário comum estiver numa aba restrita, volta para o painel.
+  // Fica aqui (e não dentro da renderização) para não causar avisos/re-renders do React.
+  useEffect(() => {
+    const restrictedTabs = ['caixa', 'fornecedores', 'configuracoes', 'usuarios', 'auditoria', 'comissoes'];
+    if (currentUser?.role === 'USER' && restrictedTabs.includes(activeTab)) {
+      setActiveTab('dashboard');
+    }
+  }, [currentUser, activeTab]);
+
   const handleLogin = async (user: string, pass: string): Promise<boolean> => {
     try {
       const authenticated = await api.login(user, pass);
@@ -130,7 +139,6 @@ const App: React.FC = () => {
   };
 
   const handleSaveOS = async (data: any) => {
-    console.log('App: handleSaveOS chamado com dados:', data);
     try {
       const { model, brand, color, capacity, imei, hasImei, imeiReason, password, itemsLeft, ...rest } = data;
       
@@ -191,10 +199,11 @@ const App: React.FC = () => {
   const renderContent = () => {
     const restrictedTabs = ['caixa', 'fornecedores', 'configuracoes', 'usuarios', 'auditoria', 'comissoes'];
     if (currentUser.role === 'USER' && restrictedTabs.includes(activeTab)) {
-      setActiveTab('dashboard');
+      // Funcionário comum não acessa abas restritas: mostra o painel.
+      // O redirecionamento da aba ativa é feito no useEffect abaixo (nunca durante a renderização).
       return (
         <ErrorBoundary>
-          <Dashboard onNewOS={handleNewOS} onViewAllOS={() => setActiveTab('os')} />
+          <Dashboard onNewOS={handleNewOS} onViewAllOS={() => setActiveTab('os')} userRole={currentUser.role} />
         </ErrorBoundary>
       );
     }
@@ -202,7 +211,7 @@ const App: React.FC = () => {
     let content;
     switch (activeTab) {
       case 'dashboard':
-        content = <Dashboard onNewOS={handleNewOS} onViewAllOS={() => setActiveTab('os')} />;
+        content = <Dashboard onNewOS={handleNewOS} onViewAllOS={() => setActiveTab('os')} userRole={currentUser.role} />;
         break;
       case 'os':
         content = isCreatingOS ? 
@@ -251,7 +260,7 @@ const App: React.FC = () => {
         content = <CommissionsView />;
         break;
       default:
-        content = <Dashboard onNewOS={handleNewOS} onViewAllOS={() => setActiveTab('os')} />;
+        content = <Dashboard onNewOS={handleNewOS} onViewAllOS={() => setActiveTab('os')} userRole={currentUser.role} />;
     }
 
     return (

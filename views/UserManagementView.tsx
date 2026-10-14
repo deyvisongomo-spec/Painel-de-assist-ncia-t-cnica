@@ -13,7 +13,7 @@ const UserManagementView: React.FC<UserManagementViewProps> = ({ currentUser, on
   const [users, setUsers] = useState<UserType[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingUser, setEditingUser] = useState<UserType | null>(null);
-  const [newUser, setNewUser] = useState({ name: '', username: '', password: '', role: 'USER' as 'USER' | 'ADMIN', commissionRate: 0 });
+  const [newUser, setNewUser] = useState({ name: '', username: '', email: '', password: '', role: 'USER' as 'USER' | 'ADMIN', commissionRate: 0 });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -30,10 +30,10 @@ const UserManagementView: React.FC<UserManagementViewProps> = ({ currentUser, on
     const result = await api.addUser(newUser);
     if (result.success) {
       setShowAddForm(false);
-      setNewUser({ name: '', username: '', password: '', role: 'USER', commissionRate: 0 });
+      setNewUser({ name: '', username: '', email: '', password: '', role: 'USER', commissionRate: 0 });
       loadUsers();
-      setSuccess('Usuário cadastrado com sucesso!');
-      setTimeout(() => setSuccess(''), 3000);
+      setSuccess(result.message || 'Colaborador criado com sucesso!');
+      setTimeout(() => setSuccess(''), 4000);
     } else {
       setError(result.message);
     }
@@ -132,11 +132,29 @@ const UserManagementView: React.FC<UserManagementViewProps> = ({ currentUser, on
                     <input required type="number" value={editingUser ? editingUser.commissionRate : newUser.commissionRate} onChange={e => editingUser ? setEditingUser({...editingUser, commissionRate: Number(e.target.value)}) : setNewUser({...newUser, commissionRate: Number(e.target.value)})} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold" />
                   </div>
                 </div>
-                <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Senha</label>
-                  <input required={!editingUser} type="password" value={editingUser ? editingUser.password : newUser.password} onChange={e => editingUser ? setEditingUser({...editingUser, password: e.target.value}) : setNewUser({...newUser, password: e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold" />
-                </div>
+                {!editingUser && (
+                  <>
+                    <div>
+                      <label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">E-mail de acesso</label>
+                      <input required type="email" value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} placeholder="colaborador@email.com" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Senha inicial (mín. 6 caracteres)</label>
+                      <input required type="password" minLength={6} value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold" />
+                    </div>
+                  </>
+                )}
+                {editingUser && (
+                  <div className="bg-blue-50 border border-blue-100 text-blue-700 text-[11px] font-bold p-4 rounded-2xl leading-relaxed">
+                    Para trocar a senha, o próprio colaborador usa a opção "Esqueceu sua senha?" na tela de login. O e-mail de acesso não pode ser alterado por aqui.
+                  </div>
+                )}
               </div>
+              {error && (
+                <div className="bg-rose-50 border border-rose-100 text-rose-600 p-4 rounded-2xl text-xs font-bold text-center flex items-center justify-center gap-2">
+                  <AlertCircle size={14} /> {error}
+                </div>
+              )}
               <button type="submit" className="w-full py-5 bg-blue-600 text-white rounded-2xl font-black uppercase shadow-xl hover:bg-blue-700 transition-all">
                 {editingUser ? 'Salvar Alterações' : 'Criar Usuário'}
               </button>
